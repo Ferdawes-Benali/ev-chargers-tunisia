@@ -1,0 +1,14 @@
+# Node / frontend
+node_modules/
+dist/
+.env
+.env.local
+*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
