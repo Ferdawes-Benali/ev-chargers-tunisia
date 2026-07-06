@@ -10,4 +10,6 @@ public interface IStationRepository
     Task AddAsync(Station station, CancellationToken ct);
     Task UpdateAsync(Station station, CancellationToken ct);
     Task DeleteAsync(Guid id, CancellationToken ct);
+    Task AddReviewAsync(Review review, CancellationToken ct);
+    Task AddCheckinAsync(AvailabilityCheckin checkin, CancellationToken ct);
 }
