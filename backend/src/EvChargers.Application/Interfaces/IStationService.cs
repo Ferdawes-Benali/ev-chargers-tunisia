@@ -1,10 +1,11 @@
+using EvChargers.Application.Common;
 using EvChargers.Application.DTOs;
 
 namespace EvChargers.Application.Interfaces;
 
 public interface IStationService
 {
-    Task<List<StationListItemDto>> GetPagedAsync(int page, int size, CancellationToken ct);
+    Task<Common.PagedResult<StationListItemDto>> GetPagedAsync(int page, int size, string? connectorType, int? minPowerKw, CancellationToken ct);
     Task<StationDetailDto?> GetByIdAsync(Guid id, CancellationToken ct);
     Task<List<StationListItemDto>> GetNearbyAsync(double lat, double lng, double radiusKm, CancellationToken ct);
     Task<Guid> CreateAsync(CreateStationRequest req, CancellationToken ct);

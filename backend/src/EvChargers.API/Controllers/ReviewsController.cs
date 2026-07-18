@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using FluentValidation;
 using EvChargers.Application.DTOs;
 using EvChargers.Application.Interfaces;
 
@@ -9,7 +10,13 @@ namespace EvChargers.API.Controllers;
 public class ReviewsController : ControllerBase
 {
     private readonly IStationService _stations;
-    public ReviewsController(IStationService stations) => _stations = stations;
+    private readonly IValidator<CreateReviewRequest> _validator;
+
+    public ReviewsController(IStationService stations, IValidator<CreateReviewRequest> validator)
+    {
+        _stations = stations;
+        _validator = validator;
+    }
 
     [HttpGet]
     public async Task<IActionResult> List(Guid stationId, CancellationToken ct)
@@ -18,13 +25,11 @@ public class ReviewsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(Guid stationId, [FromBody] CreateReviewRequest req, CancellationToken ct)
     {
+        var validation = await _validator.ValidateAsync(req, ct);
+        if (!validation.IsValid)
+            return BadRequest(validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }));
+
         await _stations.AddReviewAsync(stationId, req, ct);
-        return Created();
-    }
-    [HttpPost("{id:guid}/checkin")]
-    public async Task<IActionResult> Checkin(Guid id, [FromBody] CheckinRequest req, CancellationToken ct)
-    {
-        await _stations.AddCheckinAsync(id, req, ct);
         return Created();
     }
 }

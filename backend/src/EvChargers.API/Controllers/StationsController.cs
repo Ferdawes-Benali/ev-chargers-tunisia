@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using FluentValidation;
 using EvChargers.Application.DTOs;
 using EvChargers.Application.Interfaces;
 
@@ -9,11 +10,20 @@ namespace EvChargers.API.Controllers;
 public class StationsController : ControllerBase
 {
     private readonly IStationService _stations;
-    public StationsController(IStationService stations) => _stations = stations;
+    private readonly IValidator<CreateStationRequest> _validator;
+
+    public StationsController(IStationService stations, IValidator<CreateStationRequest> validator)
+    {
+        _stations = stations;
+        _validator = validator;
+    }
 
     [HttpGet]
-    public async Task<IActionResult> List([FromQuery] int page = 1, [FromQuery] int size = 20, CancellationToken ct = default)
-        => Ok(await _stations.GetPagedAsync(page, size, ct));
+    public async Task<IActionResult> List(
+        [FromQuery] int page = 1, [FromQuery] int size = 20,
+        [FromQuery] string? connectorType = null, [FromQuery] int? minPowerKw = null,
+        CancellationToken ct = default)
+        => Ok(await _stations.GetPagedAsync(page, size, connectorType, minPowerKw, ct));
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
@@ -30,6 +40,10 @@ public class StationsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateStationRequest req, CancellationToken ct)
     {
+        var validation = await _validator.ValidateAsync(req, ct);
+        if (!validation.IsValid)
+            return BadRequest(validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }));
+
         var id = await _stations.CreateAsync(req, ct);
         return CreatedAtAction(nameof(GetById), new { id }, new { id });
     }
@@ -37,6 +51,10 @@ public class StationsController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] CreateStationRequest req, CancellationToken ct)
     {
+        var validation = await _validator.ValidateAsync(req, ct);
+        if (!validation.IsValid)
+            return BadRequest(validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }));
+
         var success = await _stations.UpdateAsync(id, req, ct);
         return success ? NoContent() : NotFound();
     }
@@ -53,5 +71,12 @@ public class StationsController : ControllerBase
     {
         var success = await _stations.DeleteAsync(id, ct);
         return success ? NoContent() : NotFound();
+    }
+
+    [HttpPost("{id:guid}/checkin")]
+    public async Task<IActionResult> Checkin(Guid id, [FromBody] CheckinRequest req, CancellationToken ct)
+    {
+        await _stations.AddCheckinAsync(id, req, ct);
+        return Created();
     }
 }
