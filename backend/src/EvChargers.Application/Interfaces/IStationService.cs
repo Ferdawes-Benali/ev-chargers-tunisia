@@ -12,8 +12,7 @@ public interface IStationService
     Task<bool> UpdateAsync(Guid id, CreateStationRequest req, CancellationToken ct);
     Task<bool> VerifyAsync(Guid id, CancellationToken ct);
     Task<bool> DeleteAsync(Guid id, CancellationToken ct);
-
-    Task<List<ReviewDto>> GetReviewsAsync(Guid stationId, CancellationToken ct);
-    Task AddReviewAsync(Guid stationId, CreateReviewRequest req, CancellationToken ct);
-    Task AddCheckinAsync(Guid stationId, CheckinRequest req, CancellationToken ct);
-}
+    
+    Task<List<ReviewDto>?> GetReviewsAsync(Guid stationId, CancellationToken ct);
+    Task<bool> AddReviewAsync(Guid stationId, CreateReviewRequest req, CancellationToken ct);
+    Task<bool> AddCheckinAsync(Guid stationId, CheckinRequest req, CancellationToken ct);}
