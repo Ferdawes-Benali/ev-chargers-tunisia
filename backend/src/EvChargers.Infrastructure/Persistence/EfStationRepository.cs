@@ -4,6 +4,7 @@ using EvChargers.Application.Interfaces;
 using EvChargers.Domain.Entities;
 using EvChargers.Domain.Enums;
 
+
 namespace EvChargers.Infrastructure.Persistence;
 
 public class EfStationRepository : IStationRepository
@@ -11,6 +12,18 @@ public class EfStationRepository : IStationRepository
     private readonly AppDbContext _db;
     public EfStationRepository(AppDbContext db) => _db = db;
 
+    public async Task<List<Station>> GetByBoundingBoxAsync(double south, double west, double north, double east, CancellationToken ct)
+    {
+        var verified = await _db.Stations
+            .Include(s => s.Reviews)
+            .Where(s => s.Status == StationStatus.Verified)
+            .ToListAsync(ct);
+
+        return verified
+            .Where(s => s.Location.Y >= south && s.Location.Y <= north
+                     && s.Location.X >= west && s.Location.X <= east)
+            .ToList();
+    }
     public async Task AddReviewAsync(Review review, CancellationToken ct)
     {
         _db.Reviews.Add(review);

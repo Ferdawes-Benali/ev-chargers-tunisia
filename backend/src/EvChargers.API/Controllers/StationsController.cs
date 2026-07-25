@@ -86,4 +86,11 @@ public class StationsController : ControllerBase
         var success = await _stations.AddCheckinAsync(id, req, ct);
         return success ? Created() : NotFound();
     }
+
+    [HttpGet("bbox")]
+    public async Task<IActionResult> Bbox(
+        [FromQuery] double south, [FromQuery] double west,
+        [FromQuery] double north, [FromQuery] double east,
+        CancellationToken ct)
+        => Ok(await _stations.GetByBoundingBoxAsync(south, west, north, east, ct));
 }

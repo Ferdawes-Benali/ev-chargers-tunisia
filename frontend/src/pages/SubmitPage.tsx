@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
+import LocationPicker from "@/components/LocationPicker";
 const CONNECTOR_TYPES = ["Type2", "CCS", "CHAdeMO", "Tesla"] as const;
 
 const schema = z.object({
@@ -61,15 +61,16 @@ export default function SubmitPage() {
           <Input placeholder="Address (optional)" {...register("address")} />
         </div>
 
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <Input placeholder="Latitude" type="number" step="any" {...register("lat")} />
-            {errors.lat && <p className="text-sm text-destructive">{errors.lat.message}</p>}
-          </div>
-          <div className="flex-1">
-            <Input placeholder="Longitude" type="number" step="any" {...register("lng")} />
-            {errors.lng && <p className="text-sm text-destructive">{errors.lng.message}</p>}
-          </div>
+        <div>
+          <LocationPicker
+            onPick={(lat, lng) => {
+              setValue("lat", lat, { shouldValidate: true });
+              setValue("lng", lng, { shouldValidate: true });
+            }}
+          />
+          {(errors.lat || errors.lng) && (
+            <p className="text-sm text-destructive mt-1">Please click the map to set a location</p>
+          )}
         </div>
 
         <div>
