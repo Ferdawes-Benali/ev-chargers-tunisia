@@ -12,6 +12,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<EvChargers.Application.Interfaces.IStationService, EvChargers.Application.Services.StationService>();
+builder.Services.AddScoped<EvChargers.Application.Interfaces.IReachEstimatorService, EvChargers.Application.Services.ReachEstimatorService>();
 builder.Services.AddValidatorsFromAssembly(typeof(EvChargers.Application.Validators.CreateStationRequestValidator).Assembly);
 builder.Services.AddCors(options =>
 {
@@ -34,6 +35,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
+
 
 var app = builder.Build();
 app.UseMiddleware<EvChargers.API.Middleware.ExceptionHandlingMiddleware>();
