@@ -16,7 +16,8 @@ public static class InfrastructureServiceExtensions
 
         services.AddScoped<Application.Interfaces.IVehicleRepository, Persistence.EfVehicleRepository>();
         services.AddScoped<Application.Interfaces.IStationRepository, Persistence.EfStationRepository>();
-
+        services.AddScoped<Application.Interfaces.IUserRepository, Persistence.EfUserRepository>();
+        services.AddScoped<Application.Interfaces.IAuditLogRepository, Persistence.EfAuditLogRepository>();
         return services;
     }
 }

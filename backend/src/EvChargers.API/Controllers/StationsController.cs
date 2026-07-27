@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 using FluentValidation;
 using EvChargers.Application.DTOs;
 using EvChargers.Application.Interfaces;
+using EvChargers.Domain.Entities;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace EvChargers.API.Controllers;
 
@@ -11,15 +14,28 @@ public class StationsController : ControllerBase
 {
     private readonly IStationService _stations;
     private readonly IValidator<CreateStationRequest> _validator;
-
     private readonly IValidator<CheckinRequest> _checkinValidator;
+    private readonly IUserRepository _users;
+    private readonly IAuditLogRepository _auditLog;
 
-    public StationsController(IStationService stations, IValidator<CreateStationRequest> validator, IValidator<CheckinRequest> checkinValidator)
+    public StationsController(
+        IStationService stations,
+        IValidator<CreateStationRequest> validator,
+        IValidator<CheckinRequest> checkinValidator,
+        IUserRepository users,
+        IAuditLogRepository auditLog)
     {
         _stations = stations;
         _validator = validator;
         _checkinValidator = checkinValidator;
+        _users = users;
+        _auditLog = auditLog;
     }
+
+    private Guid CurrentUserId =>
+        Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub")
+            ?? throw new InvalidOperationException("No user id claim found"));
 
     [HttpGet]
     public async Task<IActionResult> List(
@@ -39,7 +55,8 @@ public class StationsController : ControllerBase
     public async Task<IActionResult> Nearby([FromQuery] double lat, [FromQuery] double lng,
                                             [FromQuery] double radiusKm = 10, CancellationToken ct = default)
         => Ok(await _stations.GetNearbyAsync(lat, lng, radiusKm, ct));
-
+    
+    [Authorize]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateStationRequest req, CancellationToken ct)
     {
@@ -51,6 +68,7 @@ public class StationsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id }, new { id });
     }
 
+    [Authorize]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] CreateStationRequest req, CancellationToken ct)
     {
@@ -62,20 +80,53 @@ public class StationsController : ControllerBase
         return success ? NoContent() : NotFound();
     }
 
-    [HttpPost("{id:guid}/verify")]
-    public async Task<IActionResult> Verify(Guid id, CancellationToken ct)
-    {
-        var success = await _stations.VerifyAsync(id, ct);
-        return success ? NoContent() : NotFound();
-    }
-
+    [Authorize]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
+        var userId = CurrentUserId;
+        var user = await _users.GetByIdAsync(userId, ct);
+        if (user is null || !user.IsAdmin)
+            return Forbid();
+
         var success = await _stations.DeleteAsync(id, ct);
-        return success ? NoContent() : NotFound();
+        if (!success) return NotFound();
+
+        await _auditLog.LogAsync(new AuditLog
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Action = "DeleteStation",
+            TargetId = id
+        }, ct);
+
+        return NoContent();
     }
 
+    [Authorize]
+    [HttpPost("{id:guid}/verify")]
+    public async Task<IActionResult> Verify(Guid id, CancellationToken ct)
+    {
+        var userId = CurrentUserId;
+        var user = await _users.GetByIdAsync(userId, ct);
+        if (user is null || !user.IsAdmin)
+            return Forbid();
+
+        var success = await _stations.VerifyAsync(id, ct);
+        if (!success) return NotFound();
+
+        await _auditLog.LogAsync(new AuditLog
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Action = "VerifyStation",
+            TargetId = id
+        }, ct);
+
+        return NoContent();
+    }
+
+    [Authorize]
     [HttpPost("{id:guid}/checkin")]
     public async Task<IActionResult> Checkin(Guid id, [FromBody] CheckinRequest req, CancellationToken ct)
     {
