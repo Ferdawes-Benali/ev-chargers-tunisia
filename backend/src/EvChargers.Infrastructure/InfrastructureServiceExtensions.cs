@@ -19,7 +19,10 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<Application.Interfaces.IUserRepository, Persistence.EfUserRepository>();
         services.AddScoped<Application.Interfaces.IAuditLogRepository, Persistence.EfAuditLogRepository>();
 
-        services.AddHttpClient<Application.Interfaces.IOrsIsochroneProvider, External.OrsIsochroneProvider>();
+        services.AddMemoryCache();
+        services.AddHttpClient<Application.Interfaces.IGeocodingProvider, External.OrsGeocodingProvider>();
+        services.AddHttpClient<Application.Interfaces.IRoutingProvider, External.OrsDirectionsProvider>();
+        services.AddHttpClient<Application.Interfaces.IWeatherProvider, External.OpenMeteoWeatherProvider>();
 
         return services;
     }

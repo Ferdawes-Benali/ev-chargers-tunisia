@@ -32,6 +32,21 @@ public class RangeCalculatorTests
     }
 
     [Fact]
+    public void Multiplier_of_one_equals_city_driving()
+    {
+        var cityRange = RangeCalculator.CalculateRangeKm(60, 150, 5, 75, "city");
+        var multiplierRange = RangeCalculator.CalculateRangeKm(60, 150, 5, 75, 1.0);
+        multiplierRange.Should().BeApproximately(cityRange, 1e-9);
+    }
+
+    [Fact]
+    public void Higher_multiplier_reduces_range_proportionally()
+    {
+        var range = RangeCalculator.CalculateRangeKm(60, 150, 5, 75, 1.25);
+        range.Should().BeApproximately(280 / 1.25, 0.1);
+    }
+
+    [Fact]
     public void Battery_at_or_below_reserve_gives_zero_range()
     {
         var range = RangeCalculator.CalculateRangeKm(60, 150, 10, 10, "city");

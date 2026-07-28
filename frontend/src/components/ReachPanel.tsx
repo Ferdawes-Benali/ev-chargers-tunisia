@@ -1,36 +1,34 @@
 import { useEffect, useRef, useState } from "react";
-import { Building2, Route, Snowflake, MapPin, X, Zap } from "lucide-react";
+import { Clock, MapPin, Milestone, Route, Thermometer, X, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import PlaceSearch from "@/components/PlaceSearch";
 import { cn } from "@/lib/utils";
+import { batteryColor } from "@/lib/battery";
 import { useVehicles } from "@/hooks/useReach";
-import type { DrivingCondition, ReachEstimateResult } from "@/types/reach";
+import type { PlaceSuggestion, ReachEstimateResult, TripPlanResult } from "@/types/reach";
 import "./ReachPanel.css";
 
 export interface ReachInputs {
   vehicleId: string;
   batteryPercent: number;
-  drivingCondition: DrivingCondition;
 }
 
 interface ReachPanelProps {
-  onEstimate: (inputs: ReachInputs) => void;
-  result: ReachEstimateResult | undefined;
+  /** fresh = the user pressed the button, so the start point may be picked again */
+  onEstimate: (inputs: ReachInputs, options: { fresh: boolean }) => void;
+  reachResult: ReachEstimateResult | undefined;
+  tripResult: TripPlanResult | undefined;
   isPending: boolean;
-  isError: boolean;
+  error: string | null;
   originLabel: string;
-  destinationKey: string | null;
-  pickingDestination: boolean;
-  onTogglePickDestination: () => void;
-  onClearDestination: () => void;
+  /** Changes when the start point changes, to recalculate */
+  originKey: string;
+  destination: PlaceSuggestion | null;
+  onDestinationChange: (place: PlaceSuggestion | null) => void;
+  searchFocus: { lat: number; lng: number } | null;
   onClose: () => void;
 }
-
-const CONDITIONS = [
-  { value: "city", label: "City", icon: Building2 },
-  { value: "highway", label: "Highway", icon: Route },
-  { value: "cold", label: "Cold", icon: Snowflake },
-] as const;
 
 type Tone = "good" | "tight" | "bad" | "neutral";
 
@@ -41,32 +39,21 @@ const TONE_STYLES: Record<Tone, string> = {
   neutral: "border-sky-200 bg-sky-50 text-sky-950",
 };
 
-/** Battery color by level: green, then amber, then red. */
-function batteryColor(percent: number) {
-  if (percent <= 15) return "#D1495B";
-  if (percent <= 35) return "#E8A33D";
-  return "#0E9F6E";
-}
-
 /** Turns raw numbers into the one thing the driver needs: a decision. */
-function getVerdict(r: ReachEstimateResult, battery: number, reserve: number): { tone: Tone; title: string; detail: string } {
-  const km = Math.round(r.rangeKm);
+function getVerdict(rangeKm: number, trip: TripPlanResult | undefined, reserve: number): { tone: Tone; title: string; detail: string } {
+  const km = Math.round(rangeKm);
 
-  if (r.rangeKm === 0) {
+  if (rangeKm === 0) {
     return { tone: "bad", title: "Charge now", detail: "Your battery is at its reserve level. Find a charger before driving further." };
   }
 
-  if (r.destinationReachable !== null && r.batteryPercentOnArrival !== null) {
-    const arrival = Math.round(r.batteryPercentOnArrival);
-    if (!r.destinationReachable) {
-      // Convert the missing battery % into kilometres: the range covers (battery - reserve) %
-      const usable = battery - reserve;
-      const shortKm = usable > 0
-        ? Math.max(1, Math.ceil(((reserve - r.batteryPercentOnArrival) * r.rangeKm) / usable))
-        : 0;
-      return { tone: "bad", title: "Charge on the way", detail: `You'd run about ${shortKm} km short of your destination.` };
+  if (trip) {
+    const arrival = Math.round(trip.batteryOnArrival);
+    if (!trip.reachable) {
+      const shortKm = Math.max(1, Math.ceil(trip.shortfallKm));
+      return { tone: "bad", title: "Charge on the way", detail: `You'd run about ${shortKm} km short. Plan a charging stop before the red dashed part of the route.` };
     }
-    if (r.batteryPercentOnArrival - reserve < 5) {
+    if (trip.batteryOnArrival - reserve < 5) {
       return { tone: "tight", title: "Tight, but you'll make it", detail: `You'd arrive with about ${arrival}%, just above your reserve. A short charging stop is safer.` };
     }
     return { tone: "good", title: "You'll make it", detail: `You'll arrive with about ${arrival}% battery.` };
@@ -75,7 +62,35 @@ function getVerdict(r: ReachEstimateResult, battery: number, reserve: number): {
   if (km < 20) {
     return { tone: "tight", title: `Only about ${km} km left`, detail: "Head to a charger now." };
   }
-  return { tone: "neutral", title: `About ${km} km of driving`, detail: "Set a destination to check a specific trip." };
+  return { tone: "neutral", title: `About ${km} km of driving`, detail: "Search for a destination to check a specific trip." };
+}
+
+function formatDuration(minutes: number) {
+  const total = Math.max(1, Math.round(minutes));
+  if (total < 60) return `${total} min`;
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return m === 0 ? `${h} h` : `${h} h ${m} min`;
+}
+
+/** Distance, time and the conditions detected automatically for the trip. */
+function TripFacts({ trip }: { trip: TripPlanResult }) {
+  const facts = [
+    { icon: Route, text: `${Math.round(trip.distanceKm)} km` },
+    { icon: Clock, text: formatDuration(trip.durationMinutes) },
+    { icon: Milestone, text: trip.motorwayShare >= 0.5 ? "Mostly motorway" : "Mostly local roads" },
+    ...(trip.temperatureC !== null ? [{ icon: Thermometer, text: `${Math.round(trip.temperatureC)} °C` }] : []),
+  ];
+  return (
+    <ul aria-label="Trip details" className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-slate-700">
+      {facts.map(({ icon: Icon, text }) => (
+        <li key={text} className="flex items-center gap-1.5">
+          <Icon className="size-4 text-slate-500" aria-hidden />
+          {text}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 /** A drawing of the battery before, during and after the trip. */
@@ -142,31 +157,33 @@ export default function ReachPanel(props: ReachPanelProps) {
   const { data: vehicles, isLoading: vehiclesLoading } = useVehicles();
   const [vehicleId, setVehicleId] = useState("");
   const [batteryPercent, setBatteryPercent] = useState(80);
-  const [condition, setCondition] = useState<DrivingCondition>("city");
   const [lastInputs, setLastInputs] = useState<ReachInputs | null>(null);
 
   // Keep the latest callback without re-triggering effects on every render
   const onEstimateRef = useRef(props.onEstimate);
   useEffect(() => { onEstimateRef.current = props.onEstimate; });
 
-  const run = (inputs: ReachInputs) => {
+  const run = (inputs: ReachInputs, fresh: boolean) => {
     setLastInputs(inputs); // the bar must reflect the inputs of THIS result
-    onEstimateRef.current(inputs);
+    onEstimateRef.current(inputs, { fresh });
   };
 
-  // After the first check, any change recalculates automatically (debounced)
-  const hasResult = !!props.result;
+  // After the first check, or once a destination is set, any change recalculates automatically (debounced)
+  const destinationKey = props.destination ? `${props.destination.lat},${props.destination.lng}` : null;
+  const hasRun = lastInputs !== null;
   useEffect(() => {
-    if (!hasResult || !vehicleId) return;
-    const t = setTimeout(() => run({ vehicleId, batteryPercent, drivingCondition: condition }), 400);
+    if (!vehicleId || (!hasRun && !destinationKey)) return;
+    const t = setTimeout(() => run({ vehicleId, batteryPercent }, false), 400);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to user inputs, not to the result itself
-  }, [vehicleId, batteryPercent, condition, props.destinationKey]);
+  }, [vehicleId, batteryPercent, destinationKey, props.originKey]);
 
-  const r = props.result;
+  const trip = props.tripResult;
+  const rangeKm = trip?.rangeKm ?? props.reachResult?.rangeKm;
+  const reachableCount = (trip ?? props.reachResult)?.reachableStationIds.length ?? 0;
   const reserve = vehicles?.find((v) => v.id === (lastInputs?.vehicleId ?? vehicleId))?.socReservePercent ?? 10;
   const resultBattery = lastInputs?.batteryPercent ?? batteryPercent;
-  const verdict = r ? getVerdict(r, resultBattery, reserve) : null;
+  const verdict = rangeKm !== undefined ? getVerdict(rangeKm, trip, reserve) : null;
   const levelColor = batteryColor(batteryPercent);
 
   return (
@@ -224,31 +241,13 @@ export default function ReachPanel(props: ReachPanelProps) {
           />
         </div>
 
-        <div role="group" aria-label="Driving conditions" className="grid grid-cols-3 gap-1 rounded-lg bg-slate-100 p-1">
-          {CONDITIONS.map(({ value, label, icon: Icon }) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={condition === value}
-              onClick={() => setCondition(value)}
-              className={cn(
-                "flex items-center justify-center gap-1.5 rounded-md py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-slate-900",
-                condition === value ? "bg-white font-medium text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
-              )}
-            >
-              <Icon className="size-4" aria-hidden />
-              {label}
-            </button>
-          ))}
-        </div>
-
         <div className="flex gap-3 rounded-lg border p-3 text-sm">
           <div className="flex flex-col items-center pt-1.5" aria-hidden>
             <span className="size-2.5 rounded-full bg-blue-600" />
-            <span className="my-1 h-7 border-l-2 border-dotted border-slate-300" />
-            <MapPin className={cn("size-4", props.destinationKey ? "text-fuchsia-600" : "text-slate-400")} />
+            <span className="my-1 h-9 border-l-2 border-dotted border-slate-300" />
+            <MapPin className={cn("size-4", props.destination ? "text-fuchsia-600" : "text-slate-400")} />
           </div>
-          <div className="flex-1 space-y-3">
+          <div className="min-w-0 flex-1 space-y-3">
             <div>
               <p className="text-xs text-slate-500">From</p>
               <p className="font-medium">{props.originLabel}</p>
@@ -256,30 +255,15 @@ export default function ReachPanel(props: ReachPanelProps) {
                 <p className="text-xs text-slate-500">Tap "Locate me" for a precise start.</p>
               )}
             </div>
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <p className="text-xs text-slate-500">To</p>
-                <p className={cn("font-medium", !props.destinationKey && "text-slate-500")}>
-                  {props.pickingDestination
-                    ? "Tap a spot on the map…"
-                    : props.destinationKey ? "Point on the map" : "Anywhere (optional)"}
-                </p>
-              </div>
-              <div className="flex items-center gap-1">
-                <Button size="sm" variant="outline" onClick={props.onTogglePickDestination}>
-                  {props.pickingDestination ? "Cancel" : props.destinationKey ? "Change" : "Set on map"}
-                </Button>
-                {props.destinationKey && (
-                  <button
-                    type="button"
-                    onClick={props.onClearDestination}
-                    aria-label="Remove destination"
-                    className="rounded-md p-1 text-slate-500 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-slate-900"
-                  >
-                    <X className="size-4" />
-                  </button>
-                )}
-              </div>
+            <div>
+              <p className="mb-1 text-xs text-slate-500">To (optional)</p>
+              <PlaceSearch
+                label="Destination"
+                value={props.destination}
+                onSelect={props.onDestinationChange}
+                onClear={() => props.onDestinationChange(null)}
+                focus={props.searchFocus}
+              />
             </div>
           </div>
         </div>
@@ -287,57 +271,36 @@ export default function ReachPanel(props: ReachPanelProps) {
         <Button
           className="w-full"
           disabled={!vehicleId || props.isPending}
-          onClick={() => run({ vehicleId, batteryPercent, drivingCondition: condition })}
+          onClick={() => run({ vehicleId, batteryPercent }, true)}
         >
-          {props.isPending ? "Checking…" : "Check range"}
+          {props.isPending ? "Checking…" : props.destination ? "Check trip" : "Check range"}
         </Button>
         {!vehicleId && <p className="-mt-2 text-center text-xs text-slate-500">Choose your car to start.</p>}
 
-        {props.isError && (
-          <p className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
-            Couldn't check your range. Check your connection and try again.
+        {props.error && (
+          <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
+            {props.error}
           </p>
         )}
 
-        {r && verdict && (
+        {verdict && rangeKm !== undefined && (
           <div aria-live="polite" aria-busy={props.isPending} className={cn("space-y-3", props.isPending && "opacity-60")}>
             <div className={cn("rounded-lg border p-3", TONE_STYLES[verdict.tone])}>
               <p className="text-base font-semibold">{verdict.title}</p>
               <p className="text-sm">{verdict.detail}</p>
             </div>
 
-            <TripBar battery={resultBattery} arrival={r.batteryPercentOnArrival} reserve={reserve} />
+            {trip && <TripFacts trip={trip} />}
 
-            {r.rangeKm > 0 && (
+            <TripBar battery={resultBattery} arrival={trip ? trip.batteryOnArrival : null} reserve={reserve} />
+
+            {rangeKm > 0 && (
               <p className="text-sm text-slate-700">
-                {r.reachableStationIds.length > 0
-                  ? `${r.reachableStationIds.length} charger${r.reachableStationIds.length > 1 ? "s" : ""} within reach, shown as green pins.`
+                {reachableCount > 0
+                  ? `${reachableCount} charger${reachableCount > 1 ? "s" : ""} within reach, shown as green pins.`
                   : "No chargers within reach from here."}
-                {r.destinationReachable !== null && (
-                  <span className="text-slate-500"> Full range about {Math.round(r.rangeKm)} km.</span>
-                )}
+                {trip && <span className="text-slate-500"> Full range about {Math.round(rangeKm)} km.</span>}
               </p>
-            )}
-
-            {r.rangeKm > 0 && (
-              <details className="text-xs text-slate-600">
-                <summary className="cursor-pointer select-none font-medium text-slate-700">How to read the map</summary>
-                <ul className="mt-2 space-y-1.5">
-                  <li className="flex items-center gap-2">
-                    <span className="size-2.5 shrink-0 rounded-full bg-blue-600" aria-hidden />Your starting point
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-4 shrink-0 border-t-2 border-dashed border-blue-600" aria-hidden />Straight-line estimate of your range
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="size-3 shrink-0 rounded-sm border border-green-600 bg-green-600/30" aria-hidden />
-                    Roads you can reach{r.rangeKm > 120 ? " (drawn up to 120 km)" : ""}
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="size-2.5 shrink-0 rounded-full bg-green-600" aria-hidden />Chargers within reach
-                  </li>
-                </ul>
-              </details>
             )}
           </div>
         )}
