@@ -30,6 +30,12 @@ public class EfStationRepository : IStationRepository
         await _db.SaveChangesAsync(ct);
     }
 
+    public async Task UpdateReviewAsync(Review review, CancellationToken ct)
+    {
+        _db.Reviews.Update(review);
+        await _db.SaveChangesAsync(ct);
+    }
+
     public async Task AddCheckinAsync(AvailabilityCheckin checkin, CancellationToken ct)
     {
         _db.Checkins.Add(checkin);

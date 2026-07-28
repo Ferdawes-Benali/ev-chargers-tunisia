@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using FluentValidation;
 using EvChargers.Application.DTOs;
+using EvChargers.Application.Common;
 using EvChargers.Application.Interfaces;
-using EvChargers.Domain.Entities;
+using EvChargers.API.Extensions;
 using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
 
 namespace EvChargers.API.Controllers;
 
@@ -15,27 +15,23 @@ public class StationsController : ControllerBase
     private readonly IStationService _stations;
     private readonly IValidator<CreateStationRequest> _validator;
     private readonly IValidator<CheckinRequest> _checkinValidator;
-    private readonly IUserRepository _users;
-    private readonly IAuditLogRepository _auditLog;
 
     public StationsController(
         IStationService stations,
         IValidator<CreateStationRequest> validator,
-        IValidator<CheckinRequest> checkinValidator,
-        IUserRepository users,
-        IAuditLogRepository auditLog)
+        IValidator<CheckinRequest> checkinValidator)
     {
         _stations = stations;
         _validator = validator;
         _checkinValidator = checkinValidator;
-        _users = users;
-        _auditLog = auditLog;
     }
 
-    private Guid CurrentUserId =>
-        Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? User.FindFirstValue("sub")
-            ?? throw new InvalidOperationException("No user id claim found"));
+    private IActionResult ToActionResult(OperationResult result) => result switch
+    {
+        OperationResult.Ok => NoContent(),
+        OperationResult.Forbidden => Forbid(),
+        _ => NotFound(),
+    };
 
     [HttpGet]
     public async Task<IActionResult> List(
@@ -64,7 +60,7 @@ public class StationsController : ControllerBase
         if (!validation.IsValid)
             return BadRequest(validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }));
 
-        var id = await _stations.CreateAsync(req, ct);
+        var id = await _stations.CreateAsync(req, User.GetUserId(), ct);
         return CreatedAtAction(nameof(GetById), new { id }, new { id });
     }
 
@@ -76,55 +72,18 @@ public class StationsController : ControllerBase
         if (!validation.IsValid)
             return BadRequest(validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }));
 
-        var success = await _stations.UpdateAsync(id, req, ct);
-        return success ? NoContent() : NotFound();
+        return ToActionResult(await _stations.UpdateAsync(id, req, User.GetUserId(), ct));
     }
 
     [Authorize]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
-    {
-        var userId = CurrentUserId;
-        var user = await _users.GetByIdAsync(userId, ct);
-        if (user is null || !user.IsAdmin)
-            return Forbid();
-
-        var success = await _stations.DeleteAsync(id, ct);
-        if (!success) return NotFound();
-
-        await _auditLog.LogAsync(new AuditLog
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Action = "DeleteStation",
-            TargetId = id
-        }, ct);
-
-        return NoContent();
-    }
+        => ToActionResult(await _stations.DeleteAsync(id, User.GetUserId(), ct));
 
     [Authorize]
     [HttpPost("{id:guid}/verify")]
     public async Task<IActionResult> Verify(Guid id, CancellationToken ct)
-    {
-        var userId = CurrentUserId;
-        var user = await _users.GetByIdAsync(userId, ct);
-        if (user is null || !user.IsAdmin)
-            return Forbid();
-
-        var success = await _stations.VerifyAsync(id, ct);
-        if (!success) return NotFound();
-
-        await _auditLog.LogAsync(new AuditLog
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Action = "VerifyStation",
-            TargetId = id
-        }, ct);
-
-        return NoContent();
-    }
+        => ToActionResult(await _stations.VerifyAsync(id, User.GetUserId(), ct));
 
     [Authorize]
     [HttpPost("{id:guid}/checkin")]
@@ -134,7 +93,7 @@ public class StationsController : ControllerBase
         if (!validation.IsValid)
             return BadRequest(validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }));
 
-        var success = await _stations.AddCheckinAsync(id, req, ct);
+        var success = await _stations.AddCheckinAsync(id, req, User.GetUserId(), ct);
         return success ? Created() : NotFound();
     }
 
