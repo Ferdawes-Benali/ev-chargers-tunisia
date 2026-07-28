@@ -6,7 +6,7 @@ namespace EvChargers.Application.Services;
 
 public class TripPlannerService : ITripPlannerService
 {
-    private const double RoadFactor = 0.75; // straight-line reach ≈ 75% of road range
+    private const double RouteBufferKm = 5; // chargers further than this from the road aren't "on the way"
 
     private readonly IVehicleRepository _vehicles;
     private readonly IStationRepository _stations;
@@ -42,9 +42,15 @@ public class TripPlannerService : ITripPlannerService
 
         var energy = RouteEnergy.Compute(route.Points, req.BatteryPercent, vehicle.SocReservePercent, rangeKm, route.DistanceKm);
 
-        var reachable = rangeKm > 0
-            ? await _stations.GetNearbyAsync(req.OriginLat, req.OriginLng, rangeKm * RoadFactor, ct)
+        // Chargers near the road (filtered by PostGIS), then which ones the battery reaches
+        var nearRoute = rangeKm > 0
+            ? await _stations.GetNearRouteAsync(energy.Points.Select(p => (p[0], p[1])).ToList(), RouteBufferKm, ct)
             : [];
+        var stops = RouteStops.Evaluate(
+            energy.Points, energy.BatteryAtPoints, energy.CumulativeKm,
+            nearRoute.Select(s => new RouteStation(s.Id, s.Name, s.Location.Y, s.Location.X)),
+            vehicle.SocReservePercent);
+        var recommended = stops.Recommended;
 
         return new TripPlanOutcome(TripPlanStatus.Ok, new TripPlanResult(
             DistanceKm: Math.Round(route.DistanceKm, 1),
@@ -58,6 +64,14 @@ public class TripPlannerService : ITripPlannerService
             RoutePoints: energy.Points,
             BatteryAtPoints: energy.BatteryAtPoints.Select(b => Math.Round(b, 1)).ToList(),
             LowBatteryPoint: energy.LowBatteryPoint,
-            ReachableStationIds: reachable.Select(s => s.Id).ToList()));
+            ReachableStationIds: stops.Stations.Where(s => s.OnTheWay).Select(s => s.Station.Id).ToList(),
+            RecommendedStop: recommended is null ? null : new RecommendedStopDto(
+                recommended.Station.Id,
+                recommended.Station.Name,
+                Math.Round(recommended.DistanceAlongKm, 1),
+                Math.Round(recommended.BatteryWhenPassingPercent, 1),
+                recommended.Station.Lat,
+                recommended.Station.Lng),
+            ChargersAlongRouteCount: stops.Stations.Count(s => s.AheadOfStart)));
     }
 }

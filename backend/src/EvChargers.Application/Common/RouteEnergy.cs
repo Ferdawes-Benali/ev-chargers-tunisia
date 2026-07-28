@@ -2,10 +2,12 @@ namespace EvChargers.Application.Common;
 
 /// <param name="Points">Route points as [lat, lng]; includes the point where the battery reaches the reserve, if any.</param>
 /// <param name="BatteryAtPoints">Battery % at each point (same length as Points, never below 0).</param>
+/// <param name="CumulativeKm">Road distance from the start at each point (same length as Points).</param>
 /// <param name="LowBatteryPoint">[lat, lng] where the battery reaches the reserve, or null if it never does.</param>
 public record RouteEnergyResult(
     List<double[]> Points,
     List<double> BatteryAtPoints,
+    List<double> CumulativeKm,
     double[]? LowBatteryPoint,
     double BatteryOnArrival,
     double ShortfallKm);
@@ -29,7 +31,7 @@ public static class RouteEnergy
         double? roadDistanceKm = null)
     {
         if (points.Count == 0)
-            return new RouteEnergyResult([], [], null, batteryPercent, 0);
+            return new RouteEnergyResult([], [], [], null, batteryPercent, 0);
 
         // Cumulative distance at each point
         var cumulative = new double[points.Count];
@@ -47,6 +49,7 @@ public static class RouteEnergy
             return new RouteEnergyResult(
                 points.ToList(),
                 Enumerable.Repeat(Math.Max(0, batteryPercent), points.Count).ToList(),
+                cumulative.Select(km => km * scale).ToList(),
                 points[0],
                 Math.Max(0, batteryPercent),
                 totalKm);
@@ -57,6 +60,7 @@ public static class RouteEnergy
 
         var outPoints = new List<double[]>(points.Count + 1);
         var battery = new List<double>(points.Count + 1);
+        var outKm = new List<double>(points.Count + 1);
         double[]? lowPoint = null;
 
         for (var i = 0; i < points.Count; i++)
@@ -75,15 +79,18 @@ public static class RouteEnergy
                 ];
                 outPoints.Add(lowPoint);
                 battery.Add(BatteryAt(rangeKm));
+                outKm.Add(rangeKm);
             }
 
             outPoints.Add(points[i]);
             battery.Add(BatteryAt(km));
+            outKm.Add(km);
         }
 
         return new RouteEnergyResult(
             outPoints,
             battery,
+            outKm,
             lowPoint,
             BatteryAt(totalKm),
             Math.Max(0, totalKm - rangeKm));

@@ -80,6 +80,19 @@ public class EfStationRepository : IStationRepository
             .ToListAsync(ct);
     }
 
+    public async Task<List<Station>> GetNearRouteAsync(IReadOnlyList<(double Lat, double Lng)> routePoints, double bufferKm, CancellationToken ct)
+    {
+        if (routePoints.Count < 2) return [];
+
+        // X = longitude, Y = latitude. Against the geography column this becomes ST_DWithin in meters.
+        var line = new LineString(routePoints.Select(p => new Coordinate(p.Lng, p.Lat)).ToArray()) { SRID = 4326 };
+        return await _db.Stations
+            .Include(s => s.Reviews)
+            .Where(s => s.Status == StationStatus.Verified
+                    && s.Location.IsWithinDistance(line, bufferKm * 1000))
+            .ToListAsync(ct);
+    }
+
     public async Task AddAsync(Station station, CancellationToken ct)
     {
         _db.Stations.Add(station);

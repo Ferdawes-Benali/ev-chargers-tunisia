@@ -35,6 +35,15 @@ const lowBatteryIcon = L.divIcon({
   popupAnchor: [0, -14],
 });
 
+// Lucide "zap" path, inlined because divIcon takes an HTML string
+const recommendedStopIcon = L.divIcon({
+  className: "",
+  html: `<div style="display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:${BATTERY_COLORS.good};border:3px solid #fff;box-shadow:0 2px 6px rgba(15,23,42,.5)"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg></div>`,
+  iconSize: [40, 40],
+  iconAnchor: [20, 20],
+  popupAnchor: [0, -20],
+});
+
 const DEFAULT_ORIGIN: [number, number] = [36.8065, 10.1815]; // Tunis
 
 interface BoundingBox { south: number; west: number; north: number; east: number; }
@@ -237,6 +246,23 @@ export default function MapView() {
                 <Popup>Battery reaches your reserve here</Popup>
               </Marker>
             )}
+            {tripResult.recommendedStop && (
+              <Marker
+                position={[tripResult.recommendedStop.lat, tripResult.recommendedStop.lng]}
+                icon={recommendedStopIcon}
+                zIndexOffset={2000}
+                title={`Recommended charging stop: ${tripResult.recommendedStop.name}`}
+              >
+                <Popup>
+                  <div className="space-y-1">
+                    <strong>{tripResult.recommendedStop.name}</strong>
+                    <p className="text-sm">km {Math.round(tripResult.recommendedStop.distanceAlongKm)} of your trip</p>
+                    <p className="text-sm">You'll arrive with about {Math.round(tripResult.recommendedStop.batteryOnArrivalPercent)}%</p>
+                    <Link to={`/stations/${tripResult.recommendedStop.stationId}`} className="text-sm underline">View details →</Link>
+                  </div>
+                </Popup>
+              </Marker>
+            )}
           </>
         )}
 
@@ -261,6 +287,8 @@ export default function MapView() {
 
         <MarkerClusterGroup>
           {stations?.map((station) => {
+            // Drawn separately with its own marker, so don't show a second pin
+            if (destination && station.id === tripResult?.recommendedStop?.stationId) return null;
             const inReach = reachableIds.has(station.id);
             return (
               <Marker
@@ -276,7 +304,7 @@ export default function MapView() {
                     <p className="text-sm">
                       {station.avgRating !== null ? `★ ${station.avgRating.toFixed(1)}` : "No reviews"}
                     </p>
-                    {inReach && <p className="text-sm text-green-700">✓ Within your reach</p>}
+                    {inReach && <p className="text-sm text-green-700">{destination ? "✓ On your way" : "✓ Within your reach"}</p>}
                     <Link to={`/stations/${station.id}`} className="text-sm underline">View details →</Link>
                   </div>
                 </Popup>

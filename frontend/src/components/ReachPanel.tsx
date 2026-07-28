@@ -50,8 +50,20 @@ function getVerdict(rangeKm: number, trip: TripPlanResult | undefined, reserve: 
   if (trip) {
     const arrival = Math.round(trip.batteryOnArrival);
     if (!trip.reachable) {
+      const stop = trip.recommendedStop;
+      if (stop) {
+        return {
+          tone: "bad",
+          title: "Charge on the way",
+          detail: `Stop at ${stop.name}, ${Math.round(stop.distanceAlongKm)} km into your trip. You'll arrive there with about ${Math.round(stop.batteryOnArrivalPercent)}%.`,
+        };
+      }
       const shortKm = Math.max(1, Math.ceil(trip.shortfallKm));
-      return { tone: "bad", title: "Charge on the way", detail: `You'd run about ${shortKm} km short. Plan a charging stop before the red dashed part of the route.` };
+      return {
+        tone: "bad",
+        title: "Charge on the way",
+        detail: `You'd run about ${shortKm} km short, and there's no known charger on this route before your battery runs low.`,
+      };
     }
     if (trip.batteryOnArrival - reserve < 5) {
       return { tone: "tight", title: "Tight, but you'll make it", detail: `You'd arrive with about ${arrival}%, just above your reserve. A short charging stop is safer.` };
@@ -181,6 +193,16 @@ export default function ReachPanel(props: ReachPanelProps) {
   const trip = props.tripResult;
   const rangeKm = trip?.rangeKm ?? props.reachResult?.rangeKm;
   const reachableCount = (trip ?? props.reachResult)?.reachableStationIds.length ?? 0;
+  const plural = (n: number) => `${n} charger${n === 1 ? "" : "s"}`;
+  const stationLine = trip
+    ? trip.chargersAlongRouteCount === 0
+      ? "No known chargers along your route."
+      : reachableCount === trip.chargersAlongRouteCount
+        ? `${plural(trip.chargersAlongRouteCount)} along your route, shown as green pins.`
+        : `${plural(trip.chargersAlongRouteCount)} along your route. ${reachableCount} before your battery runs low, shown as green pins.`
+    : reachableCount > 0
+      ? `${plural(reachableCount)} within reach, shown as green pins.`
+      : "No chargers within reach from here.";
   const reserve = vehicles?.find((v) => v.id === (lastInputs?.vehicleId ?? vehicleId))?.socReservePercent ?? 10;
   const resultBattery = lastInputs?.batteryPercent ?? batteryPercent;
   const verdict = rangeKm !== undefined ? getVerdict(rangeKm, trip, reserve) : null;
@@ -189,7 +211,7 @@ export default function ReachPanel(props: ReachPanelProps) {
   return (
     <section
       aria-label="Check my range"
-      className="absolute bottom-3 left-3 right-3 z-[1000] max-h-[calc(100vh-110px)] overflow-y-auto rounded-xl border bg-white p-4 shadow-xl sm:right-auto sm:w-[22rem]"
+      className="absolute bottom-3 left-3 right-3 z-1000 max-h-[calc(100vh-110px)] overflow-y-auto rounded-xl border bg-white p-4 shadow-xl sm:right-auto sm:w-88"
     >
       <header className="mb-4 flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-lg font-semibold">
@@ -296,9 +318,7 @@ export default function ReachPanel(props: ReachPanelProps) {
 
             {rangeKm > 0 && (
               <p className="text-sm text-slate-700">
-                {reachableCount > 0
-                  ? `${reachableCount} charger${reachableCount > 1 ? "s" : ""} within reach, shown as green pins.`
-                  : "No chargers within reach from here."}
+                {stationLine}
                 {trip && <span className="text-slate-500"> Full range about {Math.round(rangeKm)} km.</span>}
               </p>
             )}
