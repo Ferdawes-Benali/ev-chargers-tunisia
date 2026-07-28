@@ -14,6 +14,12 @@ public class VehiclesController : ControllerBase
     public async Task<IActionResult> List(CancellationToken ct)
     {
         var list = await _vehicles.GetAllAsync(ct);
-        return Ok(list.Select(v => new { v.Id, Name = $"{v.Make} {v.Model}", v.BatteryKwh }));
+        return Ok(list.Select(v => new
+        {
+            v.Id,
+            Name = $"{v.Make} {v.Model}",
+            v.BatteryKwh,
+            v.SocReservePercent,
+        }));
     }
 }
