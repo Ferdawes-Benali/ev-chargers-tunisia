@@ -13,6 +13,7 @@ public class ResendEmailSender : IEmailSender
     private readonly ILogger<ResendEmailSender> _logger;
     private readonly string? _apiKey;
     private readonly string _from;
+    private readonly string? _devRedirectTo;
 
     public ResendEmailSender(HttpClient http, IConfiguration config, ILogger<ResendEmailSender> logger)
     {
@@ -21,39 +22,60 @@ public class ResendEmailSender : IEmailSender
         _apiKey = config["ResendApiKey"];
         // Resend's test sender until we own a verified domain (Week 12)
         _from = config["EmailFrom"] ?? "EV Chargers Tunisia <onboarding@resend.dev>";
+        // Resend test mode only delivers to the account owner: in dev, send everything there
+        _devRedirectTo = string.IsNullOrWhiteSpace(config["EmailDevRedirectTo"]) ? null : config["EmailDevRedirectTo"]!.Trim();
         _http.BaseAddress = new Uri("https://api.resend.com/");
     }
 
-    public async Task<bool> SendAsync(EmailMessage message, CancellationToken ct)
+    public async Task<EmailSendResult> SendAsync(EmailMessage message, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(_apiKey))
         {
             _logger.LogWarning("Resend API key not configured; email not sent.");
-            return false;
+            return EmailSendResult.PermanentFailure;
+        }
+
+        var to = message.To;
+        var subject = message.Subject;
+        if (_devRedirectTo is not null)
+        {
+            subject = $"[DEV → {message.To}] {subject}";
+            to = _devRedirectTo;
         }
 
         try
         {
-            var body = new { from = _from, to = new[] { message.To }, subject = message.Subject, html = message.Html };
-
+            var body = new { from = _from, to = new[] { to }, subject, html = message.Html };
             using var request = new HttpRequestMessage(HttpMethod.Post, "emails")
             {
                 Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json"),
             };
-            // Unlike ORS, Resend uses the standard "Bearer <key>" format, so the normal header API works.
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
 
-            var response = await _http.SendAsync(request, ct);
-            if (response.IsSuccessStatusCode) return true;
+            using var response = await _http.SendAsync(request, ct);
+            if (response.IsSuccessStatusCode) return EmailSendResult.Sent;
 
-            var error = await response.Content.ReadAsStringAsync(ct);
-            _logger.LogWarning("Resend rejected the email ({Status}): {Body}", response.StatusCode, error);
-            return false;
+            var status = (int)response.StatusCode;
+            var transient = status == 429 || status >= 500;
+            _logger.LogWarning("Resend rejected the email ({Status}, transient: {Transient}): {Body}",
+                status, transient, EmailMasking.MaskAll(await response.Content.ReadAsStringAsync(ct)));
+            return transient ? EmailSendResult.TransientFailure : EmailSendResult.PermanentFailure;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Network problem reaching Resend (transient: {Transient})", true);
+            return EmailSendResult.TransientFailure;
+        }
+        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
+        {
+            // Not our token, so this is the HttpClient timeout
+            _logger.LogWarning(ex, "Resend request timed out (transient: {Transient})", true);
+            return EmailSendResult.TransientFailure;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Sending email via Resend threw an exception");
-            return false;
+            _logger.LogError(ex, "Unexpected error sending email via Resend (transient: {Transient})", false);
+            return EmailSendResult.PermanentFailure;
         }
     }
 }

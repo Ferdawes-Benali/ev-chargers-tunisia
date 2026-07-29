@@ -17,6 +17,20 @@ public class DevController : ControllerBase
         _env = env;
     }
 
+    [HttpPost("preview-email")]
+    public async Task<IActionResult> PreviewEmail([FromQuery] string to, [FromQuery] string template = "welcome",
+        [FromQuery] string language = "fr", CancellationToken ct = default)
+    {
+        if (!_env.IsDevelopment()) return NotFound();
+
+        var message = template == "review"
+            ? EmailTemplates.ReviewConfirmation(to, "Ferdawes", "Tunis City Center Charger", 4, language)
+            : EmailTemplates.Welcome(to, "Ferdawes", language);
+
+        await _emailQueue.EnqueueAsync(message, ct);
+        return Accepted(new { queued = true, template, language });
+    }
+
     [HttpPost("test-email")]
     public async Task<IActionResult> TestEmail([FromQuery] string to, CancellationToken ct)
     {

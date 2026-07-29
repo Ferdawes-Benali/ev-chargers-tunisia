@@ -7,6 +7,7 @@ import { useProfile } from "@/hooks/useProfile";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import ReviewsSection from "@/components/ReviewsSection";
 
 export default function DetailPage() {
   const { id } = useParams();
@@ -70,15 +71,6 @@ export default function DetailPage() {
         )}
       </div>
 
-      <div>
-        <h2 className="font-semibold mb-2">
-          Reviews {station.avgRating !== null && `(★ ${station.avgRating.toFixed(1)}, ${station.reviewCount})`}
-        </h2>
-        {station.reviewCount === 0 && (
-          <p className="text-sm text-muted-foreground">No reviews yet.</p>
-        )}
-      </div>
-
       <a
         href={directionsUrl}
         target="_blank"
@@ -87,6 +79,8 @@ export default function DetailPage() {
       >
         Get directions →
       </a>
+
+      <ReviewsSection station={station} />
     </div>
   );
 }

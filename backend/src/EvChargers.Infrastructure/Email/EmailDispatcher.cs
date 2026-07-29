@@ -7,7 +7,7 @@ namespace EvChargers.Infrastructure.Email;
 
 /// <summary>
 /// Runs for the whole life of the API. Takes emails from the queue one by one and sends them,
-/// retrying a few times on failure. A failed email never crashes the loop.
+/// retrying only transient failures (rate limit, server/network errors). A failed email never crashes the loop.
 /// </summary>
 public class EmailDispatcher : BackgroundService
 {
@@ -16,6 +16,9 @@ public class EmailDispatcher : BackgroundService
     private readonly ChannelEmailQueue _queue;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<EmailDispatcher> _logger;
+
+    /// <summary>Wait before retry n is n × this (2 s, then 4 s). Settable so tests don't have to wait.</summary>
+    public TimeSpan BackoffUnit { get; init; } = TimeSpan.FromSeconds(2);
 
     public EmailDispatcher(ChannelEmailQueue queue, IServiceScopeFactory scopeFactory, ILogger<EmailDispatcher> logger)
     {
@@ -35,9 +38,16 @@ public class EmailDispatcher : BackgroundService
                 using var scope = _scopeFactory.CreateScope();
                 var sender = scope.ServiceProvider.GetRequiredService<IEmailSender>();
 
-                if (await sender.SendAsync(message, stoppingToken))
+                var result = await sender.SendAsync(message, stoppingToken);
+                if (result == EmailSendResult.Sent)
                 {
                     _logger.LogInformation("Email sent to {To}: {Subject}", Mask(message.To), message.Subject);
+                    break;
+                }
+
+                if (result == EmailSendResult.PermanentFailure)
+                {
+                    _logger.LogError("Email to {To} rejected permanently, not retrying: {Subject}", Mask(message.To), message.Subject);
                     break;
                 }
 
@@ -48,16 +58,11 @@ public class EmailDispatcher : BackgroundService
                 else
                 {
                     // Back off a little more each time: 2 s, then 4 s
-                    await Task.Delay(TimeSpan.FromSeconds(2 * attempt), stoppingToken);
+                    await Task.Delay(BackoffUnit * attempt, stoppingToken);
                 }
             }
         }
     }
 
-    /// <summary>"ferdawes@gmail.com" → "f***@gmail.com". Email addresses are personal data: don't write them in logs.</summary>
-    private static string Mask(string email)
-    {
-        var at = email.IndexOf('@');
-        return at <= 1 ? "***" : $"{email[0]}***{email[at..]}";
-    }
+    private static string Mask(string email) => EmailMasking.Mask(email);
 }
