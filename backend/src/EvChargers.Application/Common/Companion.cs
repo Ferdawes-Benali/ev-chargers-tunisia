@@ -9,7 +9,7 @@ public static class Companion
     public const int DefaultOneWayMinutes = 15;
     public const int MaxPerCategory = 8;
     public const int MaxTotal = 40;
-    /// <summary>ATMs and banks are everywhere in town centres: keep the default list diverse.</summary>
+    /// <summary>Include ATMs and banks in the default list to maintain category diversity.</summary>
     public const int MaxAtmsInDefaultList = 2;
     public const int MinRadiusMeters = 300;
     public const int MaxRadiusMeters = 1500;

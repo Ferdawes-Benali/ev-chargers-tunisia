@@ -20,9 +20,8 @@ public class ResendEmailSender : IEmailSender
         _http = http;
         _logger = logger;
         _apiKey = config["ResendApiKey"];
-        // Resend's test sender until we own a verified domain (Week 12)
         _from = config["EmailFrom"] ?? "EV Chargers Tunisia <onboarding@resend.dev>";
-        // Resend test mode only delivers to the account owner: in dev, send everything there
+        // Resend test mode only delivers to the account owner, so redirect development emails.
         _devRedirectTo = string.IsNullOrWhiteSpace(config["EmailDevRedirectTo"]) ? null : config["EmailDevRedirectTo"]!.Trim();
         _http.BaseAddress = new Uri("https://api.resend.com/");
     }

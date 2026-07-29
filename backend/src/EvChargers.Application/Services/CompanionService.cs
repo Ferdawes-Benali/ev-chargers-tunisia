@@ -8,7 +8,7 @@ namespace EvChargers.Application.Services;
 public class CompanionService : ICompanionService
 {
     public const string Source = "OpenStreetMap";
-    /// <summary>Walking routes are drawn on a small map: this many points is plenty.</summary>
+    /// <summary>Maximum number of points used to display walking routes on the map.</summary>
     public const int MaxRoutePoints = 200;
 
     private readonly IStationRepository _stations;

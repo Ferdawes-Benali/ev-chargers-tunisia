@@ -15,7 +15,7 @@ public record OpenState(string Status, string? ClosesAt, string? OpensAt)
 /// "24/7"; rules separated by ";" made of optional days ("Mo-Fr", "Mo,We", "Sa") and
 /// times ("08:00-18:00", "10:00-12:00,14:00-18:00", "18:00-02:00" past midnight) or "off"/"closed".
 /// A later rule replaces earlier ones for the days it names, as in OSM.
-/// Anything else (public holidays, months, sunrise…) is unknown: we never guess.
+/// Unsupported expressions (such as public holidays, months, or sunrise) return unknown rather than assumed hours.
 /// </summary>
 public static partial class OpeningHours
 {
