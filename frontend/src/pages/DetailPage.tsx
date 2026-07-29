@@ -8,6 +8,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import ReviewsSection from "@/components/ReviewsSection";
+import ChargingCompanion from "@/components/ChargingCompanion";
 
 export default function DetailPage() {
   const { id } = useParams();
@@ -79,6 +80,8 @@ export default function DetailPage() {
       >
         Get directions →
       </a>
+
+      <ChargingCompanion station={station} />
 
       <ReviewsSection station={station} />
     </div>

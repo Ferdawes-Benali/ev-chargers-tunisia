@@ -13,6 +13,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<EvChargers.Application.Interfaces.IStationService, EvChargers.Application.Services.StationService>();
 builder.Services.AddScoped<EvChargers.Application.Interfaces.IUserService, EvChargers.Application.Services.UserService>();
+builder.Services.AddScoped<EvChargers.Application.Interfaces.ICompanionService, EvChargers.Application.Services.CompanionService>();
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<EvChargers.Application.Interfaces.IReachEstimatorService, EvChargers.Application.Services.ReachEstimatorService>();
 builder.Services.AddScoped<EvChargers.Application.Interfaces.ITripPlannerService, EvChargers.Application.Services.TripPlannerService>();
 builder.Services.AddValidatorsFromAssembly(typeof(EvChargers.Application.Validators.CreateStationRequestValidator).Assembly);
