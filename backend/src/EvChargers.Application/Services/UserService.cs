@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using EvChargers.Application.Common;
+using EvChargers.Application.Common.Mapping;
 using EvChargers.Application.DTOs;
 using EvChargers.Application.Email;
 using EvChargers.Application.Interfaces;
@@ -10,12 +11,14 @@ namespace EvChargers.Application.Services;
 public class UserService : IUserService
 {
     private readonly IUserRepository _users;
+    private readonly IStationRepository _stations;
     private readonly IEmailQueue _emailQueue;
     private readonly ILogger<UserService> _logger;
 
-    public UserService(IUserRepository users, IEmailQueue emailQueue, ILogger<UserService> logger)
+    public UserService(IUserRepository users, IStationRepository stations, IEmailQueue emailQueue, ILogger<UserService> logger)
     {
         _users = users;
+        _stations = stations;
         _emailQueue = emailQueue;
         _logger = logger;
     }
@@ -64,6 +67,25 @@ public class UserService : IUserService
     public Task<bool> SetLanguageAsync(Guid userId, string language, CancellationToken ct) =>
         _users.SetLanguageAsync(userId, language, ct);
 
+    public async Task<List<StationListItemDto>> GetFavoritesAsync(Guid userId, CancellationToken ct)
+    {
+        var user = await _users.GetByIdAsync(userId, ct);
+        var favoriteIds = user?.FavoriteStationIds.Distinct().ToList() ?? [];
+        if (favoriteIds.Count == 0) return [];
+
+        var byId = (await _stations.GetByIdsAsync(favoriteIds, ct)).ToDictionary(s => s.Id);
+
+        // Deleted stations: drop them so the list stays clean
+        var gone = favoriteIds.Where(id => !byId.ContainsKey(id)).ToList();
+        if (gone.Count > 0)
+        {
+            _logger.LogInformation("Removing {Count} favorites of user {UserId} whose station no longer exists", gone.Count, userId);
+            await _users.RemoveFavoritesAsync(userId, gone, ct);
+        }
+
+        return favoriteIds.Where(byId.ContainsKey).Select(id => byId[id].ToListItemDto()).ToList();
+    }
+
     private async Task QueueWelcomeAsync(AppUser user, CancellationToken ct)
     {
         try
@@ -78,7 +100,7 @@ public class UserService : IUserService
     }
 
     private static UserProfileDto ToDto(AppUser u) =>
-        new(u.Id, u.DisplayName, u.AvatarUrl, u.IsAdmin, u.FavoriteStationIds);
+        new(u.Id, u.DisplayName, u.AvatarUrl, u.IsAdmin, u.FavoriteStationIds, u.PreferredLanguage);
 
     private static string? NullIfBlank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 }

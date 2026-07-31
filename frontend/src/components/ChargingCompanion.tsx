@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { useCompanion, useWalkingRoute } from "@/hooks/useCompanion";
+import { useLocale } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import CompanionMap from "@/components/companion/CompanionMap";
@@ -12,6 +14,8 @@ import type { StationDetail } from "@/types/station";
 
 /** "Plan my wait": what to do near this charger while the car charges. */
 export default function ChargingCompanion({ station }: { station: StationDetail }) {
+  const { t } = useTranslation();
+  const { number } = useLocale();
   const { data, isLoading, isError } = useCompanion(station.id);
   const [filter, setFilter] = useState<PlaceGroup | "all">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -62,25 +66,32 @@ export default function ChargingCompanion({ station }: { station: StationDetail 
   return (
     <section aria-labelledby="companion-heading" className="space-y-3">
       <div>
-        <h2 id="companion-heading" className="font-semibold">While you charge</h2>
+        <h2 id="companion-heading" className="font-semibold">{t("companion.title")}</h2>
         {data && (
           data.chargeMinutes !== null && data.backBy ? (
             <>
               <p className="text-sm">
-                You'll charge for about {data.chargeMinutes} min — back by <strong>{data.backBy}</strong>
+                <Trans
+                  i18nKey="companion.chargeFor"
+                  count={data.chargeMinutes}
+                  values={{ time: data.backBy }}
+                  components={{ strong: <strong /> }}
+                />
               </p>
-              <p className="text-xs text-muted-foreground">
-                {data.maxPowerKw} kW charger, 20→80% for a typical car
-              </p>
+              {data.maxPowerKw !== null && (
+                <p className="text-xs text-muted-foreground">
+                  {t("companion.chargerHint", { power: number(data.maxPowerKw) })}
+                </p>
+              )}
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">Places within a short walk</p>
+            <p className="text-sm text-muted-foreground">{t("companion.shortWalk")}</p>
           )
         )}
       </div>
 
       {isLoading ? (
-        <div className="space-y-2" aria-label="Loading nearby places">
+        <div className="space-y-2" aria-busy="true" aria-label={t("companion.loading")}>
           <div className="grid gap-2 sm:grid-cols-3">
             <Skeleton className="h-20" />
             <Skeleton className="h-20" />
@@ -91,25 +102,23 @@ export default function ChargingCompanion({ station }: { station: StationDetail 
           <Skeleton className="h-10 w-full" />
         </div>
       ) : isError || data?.unavailable ? (
-        <p className="text-sm text-muted-foreground">Nearby places are unavailable right now.</p>
+        <p className="text-sm text-muted-foreground">{t("companion.unavailable")}</p>
       ) : places.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Nothing within walking distance — a good moment for a coffee in the car ☕
-        </p>
+        <p className="text-sm text-muted-foreground">{t("companion.empty")}</p>
       ) : (
         <>
           <SmartPicks picks={data?.picks ?? []} places={places} selectedId={selectedId} onSelect={select} />
 
-          <div role="group" aria-label="Filter places" className="flex flex-wrap gap-2">
+          <div role="group" aria-label={t("companion.filters")} className="flex flex-wrap gap-2">
             <Button
               size="sm"
               variant={filter === "all" ? "default" : "outline"}
               aria-pressed={filter === "all"}
               onClick={() => toggleFilter("all")}
             >
-              All
+              {t("companion.all")}
             </Button>
-            {presentGroups.map(({ group, label, icon: Icon }) => (
+            {presentGroups.map(({ group, icon: Icon }) => (
               <Button
                 key={group}
                 size="sm"
@@ -118,7 +127,7 @@ export default function ChargingCompanion({ station }: { station: StationDetail 
                 onClick={() => toggleFilter(group)}
               >
                 <Icon aria-hidden="true" />
-                {label}
+                {t(`companion.groups.${group}`)}
               </Button>
             ))}
           </div>
@@ -148,9 +157,9 @@ export default function ChargingCompanion({ station }: { station: StationDetail 
 
       {data && !data.unavailable && (
         <p className="text-xs text-muted-foreground">
-          Places ©{" "}
+          {t("companion.credit")}{" "}
           <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline">
-            OpenStreetMap contributors
+            {t("companion.creditLink")}
           </a>
         </p>
       )}

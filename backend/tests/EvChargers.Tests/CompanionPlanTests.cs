@@ -139,7 +139,7 @@ public class CompanionBuildTests
     {
         var places = new[] { At(100, "a"), At(300, "b"), At(600, "c"), At(900, "d"), At(1200, "e") };
 
-        Build(places).Select(p => p.Band).Should().Equal("≤2 min", "≤5 min", "≤10 min", "≤15 min", "farther");
+        Build(places).Select(p => p.Band).Should().Equal("min2", "min5", "min10", "min15", "far");
     }
 
     [Theory]
@@ -174,26 +174,26 @@ public class CompanionPicksTests
         At(500, "Jardin Thameur", PlaceCategories.Park),
     ];
 
-    private static List<(string Label, string PlaceId)> PicksAt(int hour, int minute, IEnumerable<RawPlace>? places = null)
+    private static List<(string Kind, string PlaceId)> PicksAt(int hour, int minute, IEnumerable<RawPlace>? places = null)
     {
         var now = new DateTime(2026, 9, 29, hour, minute, 0);
         var built = Companion.Build(Lat, Lng, places ?? Town, 60, now);
-        return Companion.Picks(built, now).Select(p => (p.Label, p.PlaceId)).ToList();
+        return Companion.Picks(built, now).Select(p => (p.Kind, p.PlaceId)).ToList();
     }
 
     [Fact]
     public void Lunch_time_suggests_coffee_lunch_and_prayer()
     {
         PicksAt(12, 30).Should().Equal(
-            ("Quick coffee", "node/Café du Coin"),
-            ("Lunch", "node/Dar El Jeld"),
-            ("Pray", "node/Mosquée Youssef Dey"));
+            ("coffee", "node/Café du Coin"),
+            ("lunch", "node/Dar El Jeld"),
+            ("pray", "node/Mosquée Youssef Dey"));
     }
 
     [Fact]
     public void Dinner_window_suggests_dinner()
     {
-        PicksAt(19, 30).Should().Contain(("Dinner", "node/Dar El Jeld"));
+        PicksAt(19, 30).Should().Contain(("dinner", "node/Dar El Jeld"));
     }
 
     [Theory]
@@ -203,16 +203,16 @@ public class CompanionPicksTests
     public void Outside_meal_windows_a_walk_takes_the_free_slot(int hour, int minute)
     {
         PicksAt(hour, minute).Should().Equal(
-            ("Quick coffee", "node/Café du Coin"),
-            ("Pray", "node/Mosquée Youssef Dey"),
-            ("Take a walk", "node/Jardin Thameur"));
+            ("coffee", "node/Café du Coin"),
+            ("pray", "node/Mosquée Youssef Dey"),
+            ("walk", "node/Jardin Thameur"));
     }
 
     [Fact]
     public void Closed_places_are_never_picked()
     {
         // 05:00: Café du Coin (06:00-23:00) is closed → the farther café with unknown hours is picked
-        PicksAt(5, 0)[0].Should().Be(("Quick coffee", "node/Café Loin"));
+        PicksAt(5, 0)[0].Should().Be(("coffee", "node/Café Loin"));
     }
 
     [Fact]
@@ -221,18 +221,18 @@ public class CompanionPicksTests
         var noMosque = Town.Where(p => p.Category != PlaceCategories.Mosque);
 
         PicksAt(12, 30, noMosque).Should().Equal(
-            ("Quick coffee", "node/Café du Coin"),
-            ("Lunch", "node/Dar El Jeld"),
-            ("Take a walk", "node/Jardin Thameur"));
+            ("coffee", "node/Café du Coin"),
+            ("lunch", "node/Dar El Jeld"),
+            ("walk", "node/Jardin Thameur"));
     }
 
     [Fact]
-    public void Reason_mentions_walk_and_closing_time()
+    public void Picks_carry_the_walking_time_not_display_text()
     {
         var now = new DateTime(2026, 9, 29, 12, 30, 0);
         var built = Companion.Build(Lat, Lng, Town, 60, now);
 
-        Companion.Picks(built, now)[0].Reason.Should().Be("2 min walk · open until 23:00");
+        Companion.Picks(built, now)[0].Should().Be(new CompanionPickDto("coffee", "node/Café du Coin", 2));
     }
 
     [Fact]
@@ -288,7 +288,7 @@ public class CompanionServiceTests
         result.Unavailable.Should().BeFalse();
         result.Source.Should().Be("OpenStreetMap");
         result.Places.Should().ContainSingle(p => p.Id == "node/42" && p.OpenStatus == "open");
-        result.Picks.Should().ContainSingle(p => p.Label == "Quick coffee" && p.PlaceId == "node/42");
+        result.Picks.Should().ContainSingle(p => p.Kind == "coffee" && p.PlaceId == "node/42");
         // 30 min each way → 1920 m, capped at 1500
         _places.Verify(p => p.GetNearbyAsync(36.8065, 10.1815, 1500, It.IsAny<CancellationToken>()), Times.Once);
     }

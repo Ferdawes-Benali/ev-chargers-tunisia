@@ -41,7 +41,7 @@ public partial class OverpassPlacesProvider : IPlacesProvider
     private readonly IMemoryCache _cache;
     private readonly ILogger<OverpassPlacesProvider> _logger;
 
-    /// <summary>Wait before retrying a busy (429/504) server. Settable so tests don't have to wait.</summary>
+    /// <summary>Delay before retrying a busy (429/504) server.</summary>
     public TimeSpan RetryDelay { get; init; } = TimeSpan.FromSeconds(1.5);
     /// <summary>Decides when a cached copy is stale. Settable for tests.</summary>
     public TimeProvider Clock { get; init; } = TimeProvider.System;
@@ -81,7 +81,7 @@ public partial class OverpassPlacesProvider : IPlacesProvider
         return null;
     }
 
-    /// <summary>Main server (plus one retry if it's busy), then the mirror. Null if all fail; never throws.</summary>
+    /// <summary>Queries the main server, retries once if busy, and then tries the mirror. Returns null if all requests fail.</summary>
     private async Task<List<RawPlace>?> FetchAsync(string query, CancellationToken ct)
     {
         try

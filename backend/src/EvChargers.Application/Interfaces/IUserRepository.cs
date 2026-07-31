@@ -17,4 +17,6 @@ public interface IUserRepository
     Task<bool> SetLanguageAsync(Guid userId, string language, CancellationToken ct);
     Task AddFavoriteAsync(Guid userId, Guid stationId, CancellationToken ct);
     Task RemoveFavoriteAsync(Guid userId, Guid stationId, CancellationToken ct);
+    /// <summary>Removes several favorites at once (e.g. stations that no longer exist).</summary>
+    Task RemoveFavoritesAsync(Guid userId, IReadOnlyCollection<Guid> stationIds, CancellationToken ct);
 }

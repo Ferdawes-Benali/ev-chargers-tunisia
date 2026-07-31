@@ -20,8 +20,8 @@ public record CompanionPlaceDto(string Id, string Name, PlaceNames Names, string
                                 double Lat, double Lng, int DistanceMeters, int WalkMinutes, string Band,
                                 string OpenStatus, string? ClosesAt, string? OpensAt, bool InDefaultList);
 
-/// <param name="Label">"Quick coffee", "Lunch", "Dinner", "Pray" or "Take a walk".</param>
-public record CompanionPickDto(string Label, string PlaceId, string Reason);
+/// <param name="Kind">"coffee", "lunch", "dinner", "pray" or "walk" (see PickKinds); the frontend translates it.</param>
+public record CompanionPickDto(string Kind, string PlaceId, int WalkMinutes);
 
 /// <param name="BackBy">Local "HH:mm" when the car should be ready; null without a charge time.</param>
 public record CompanionResultDto(int? ChargeMinutes, int? MaxPowerKw, string? BackBy,

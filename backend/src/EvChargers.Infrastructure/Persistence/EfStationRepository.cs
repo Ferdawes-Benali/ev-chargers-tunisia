@@ -76,6 +76,16 @@ public class EfStationRepository : IStationRepository
             .Include(s => s.Reviews)
             .FirstOrDefaultAsync(s => s.Id == id, ct);
 
+    public async Task<List<Station>> GetByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct)
+    {
+        if (ids.Count == 0) return [];
+        return await _db.Stations
+            .AsNoTracking()
+            .Include(s => s.Reviews)
+            .Where(s => ids.Contains(s.Id))
+            .ToListAsync(ct);
+    }
+
     public async Task<List<Station>> GetNearbyAsync(double lat, double lng, double radiusKm, CancellationToken ct)
     {
         var origin = new Point(lng, lat) { SRID = 4326 };

@@ -46,6 +46,10 @@ public class MeController : ControllerBase
             : NotFound();
     }
 
+    [HttpGet("favorites")]
+    public async Task<IActionResult> GetFavorites(CancellationToken ct) =>
+        Ok(await _userService.GetFavoritesAsync(User.GetUserId(), ct));
+
     [HttpPut("favorites/{stationId:guid}")]
     public async Task<IActionResult> AddFavorite(Guid stationId, CancellationToken ct)
     {

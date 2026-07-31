@@ -1,11 +1,13 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import { MapContainer, TileLayer, Marker, Popup, CircleMarker, Polyline, useMapEvents, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, CircleMarker, Polyline, ZoomControl, useMapEvents, useMap } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import axios from "axios";
-import { Zap } from "lucide-react";
+import { ArrowRight, Zap } from "lucide-react";
 import icon from "leaflet/dist/images/marker-icon.png?url";
 import iconRetina from "leaflet/dist/images/marker-icon-2x.png?url";
 import iconShadow from "leaflet/dist/images/marker-shadow.png?url";
@@ -15,6 +17,8 @@ import { useCompanion } from "@/hooks/useCompanion";
 import ReachPanel, { type ReachInputs } from "@/components/ReachPanel";
 import { Button } from "@/components/ui/button";
 import { BATTERY_COLORS, batteryColor } from "@/lib/battery";
+import { useLocale } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import type { PlaceSuggestion, ReachEstimateResult, TripPlanResult } from "@/types/reach";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -78,20 +82,32 @@ function buildRouteSegments(trip: TripPlanResult): RouteSegment[] {
   return segments;
 }
 
-function describeError(error: unknown): string {
+function describeError(error: unknown, t: TFunction): string {
   if (axios.isAxiosError(error)) {
-    if (error.response?.status === 502) return "We couldn't get a road route to this place right now. Try again in a moment, or pick a nearby town.";
-    if (error.response?.status === 404) return "This car is no longer available. Choose another car.";
+    if (error.response?.status === 502) return t("errors.noRoute");
+    if (error.response?.status === 404) return t("errors.carGone");
   }
-  return "Couldn't check your range. Check your connection and try again.";
+  return t("errors.rangeFailed");
+}
+
+/** "View details" with an arrow that points forward in both directions. */
+function DetailsLink({ stationId }: { stationId: string }) {
+  const { t } = useTranslation();
+  return (
+    <Link to={`/stations/${stationId}`} className="inline-flex items-center gap-1 text-sm underline">
+      {t("common.viewDetails")}
+      <ArrowRight aria-hidden="true" className="size-3.5 rtl:-scale-x-100" />
+    </Link>
+  );
 }
 
 /** Fetched only once the stop's popup has been opened. */
 function CompanionHint({ stationId, enabled }: { stationId: string; enabled: boolean }) {
+  const { t } = useTranslation();
   const { data } = useCompanion(stationId, enabled);
   const count = data?.places.length ?? 0;
   if (count === 0) return null;
-  return <p className="text-sm">☕ {count} {count === 1 ? "place" : "places"} nearby while you charge</p>;
+  return <p className="text-sm"><span aria-hidden="true">☕ </span>{t("map.companionHint", { count })}</p>;
 }
 
 function BoundsWatcher({ onBoundsChange }: { onBoundsChange: (bbox: BoundingBox) => void }) {
@@ -110,6 +126,8 @@ function BoundsWatcher({ onBoundsChange }: { onBoundsChange: (bbox: BoundingBox)
 }
 
 function LocateButton({ onLocate }: { onLocate: (lat: number, lng: number) => void }) {
+  const { t } = useTranslation();
+  const { isRtl } = useLocale();
   const map = useMap();
   const handleClick = () => {
     if (!navigator.geolocation) return;
@@ -121,12 +139,18 @@ function LocateButton({ onLocate }: { onLocate: (lat: number, lng: number) => vo
       () => { /* permission denied — keep current view */ }
     );
   };
+  // Inside the left-to-right map container, so the "end" side is chosen explicitly
   return (
-    <Button onClick={handleClick} className="absolute z-[1000] top-3 right-3" size="sm">Locate me</Button>
+    <Button onClick={handleClick} className={cn("absolute z-[1000] top-3", isRtl ? "left-3" : "right-3")} size="sm">
+      {t("map.locateMe")}
+    </Button>
   );
 }
 
 export default function MapView() {
+  const { t } = useTranslation();
+  const { isRtl, number } = useLocale();
+  const textDir = isRtl ? "rtl" : "ltr";
   const mapRef = useRef<L.Map | null>(null);
   const [bbox, setBbox] = useState<BoundingBox | null>(null);
   const [userPos, setUserPos] = useState<[number, number] | null>(null);
@@ -224,116 +248,133 @@ export default function MapView() {
   }, [tripResult]);
   useEffect(() => { if (!destination) fittedRoute.current = null; }, [destination]);
 
+  const stop = tripResult?.recommendedStop;
+
   return (
-    <div className="relative">
-      <MapContainer ref={mapRef} center={[34.0, 9.0]} zoom={7} style={{ height: "calc(100vh - 65px)", width: "100%" }}>
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        />
+    <div className="relative h-full">
+      {/* The map itself stays left-to-right in every language; popup contents follow the page direction */}
+      <div dir="ltr" className="h-full">
+        <MapContainer ref={mapRef} center={[34.0, 9.0]} zoom={7} zoomControl={false} style={{ height: "100%", width: "100%" }}>
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          />
+          {/* Zoom sits at the start side; "Locate me" and "Check my range" at the end side */}
+          <ZoomControl position={isRtl ? "topright" : "topleft"} />
 
-        <BoundsWatcher onBoundsChange={handleBoundsChange} />
-        <LocateButton onLocate={handleLocate} />
+          <BoundsWatcher onBoundsChange={handleBoundsChange} />
+          <LocateButton onLocate={handleLocate} />
 
-        {/* Road route colored by battery level, on a white casing for contrast with the map */}
-        {destination && tripResult && (
-          <>
-            <Polyline
-              positions={tripResult.routePoints}
-              pathOptions={{ color: "#ffffff", weight: 10, opacity: 0.9, lineCap: "round", lineJoin: "round" }}
-              interactive={false}
-            />
-            {routeSegments.map((s, i) => (
+          {/* Road route colored by battery level, on a white casing for contrast with the map */}
+          {destination && tripResult && (
+            <>
               <Polyline
-                key={`${i}-${s.color}-${s.dashed}`}
-                positions={s.positions}
-                pathOptions={{ color: s.color, weight: 6, lineCap: "round", lineJoin: "round", dashArray: s.dashed ? "2 10" : undefined }}
+                positions={tripResult.routePoints}
+                pathOptions={{ color: "#ffffff", weight: 10, opacity: 0.9, lineCap: "round", lineJoin: "round" }}
                 interactive={false}
               />
-            ))}
-            {tripResult.lowBatteryPoint && (
-              <Marker position={tripResult.lowBatteryPoint} icon={lowBatteryIcon} zIndexOffset={1000}>
-                <Popup>Battery reaches your reserve here</Popup>
-              </Marker>
-            )}
-            {tripResult.recommendedStop && (
-              <Marker
-                position={[tripResult.recommendedStop.lat, tripResult.recommendedStop.lng]}
-                icon={recommendedStopIcon}
-                zIndexOffset={2000}
-                title={`Recommended charging stop: ${tripResult.recommendedStop.name}`}
-                eventHandlers={{ popupopen: () => setOpenedStopId(tripResult.recommendedStop!.stationId) }}
-              >
-                <Popup>
-                  <div className="space-y-1">
-                    <strong>{tripResult.recommendedStop.name}</strong>
-                    <p className="text-sm">km {Math.round(tripResult.recommendedStop.distanceAlongKm)} of your trip</p>
-                    <p className="text-sm">You'll arrive with about {Math.round(tripResult.recommendedStop.batteryOnArrivalPercent)}%</p>
-                    <CompanionHint
-                      stationId={tripResult.recommendedStop.stationId}
-                      enabled={openedStopId === tripResult.recommendedStop.stationId}
-                    />
-                    <Link to={`/stations/${tripResult.recommendedStop.stationId}`} className="text-sm underline">View details →</Link>
-                  </div>
-                </Popup>
-              </Marker>
-            )}
-          </>
-        )}
+              {routeSegments.map((s, i) => (
+                <Polyline
+                  key={`${i}-${s.color}-${s.dashed}`}
+                  positions={s.positions}
+                  pathOptions={{ color: s.color, weight: 6, lineCap: "round", lineJoin: "round", dashArray: s.dashed ? "2 10" : undefined }}
+                  interactive={false}
+                />
+              ))}
+              {tripResult.lowBatteryPoint && (
+                <Marker position={tripResult.lowBatteryPoint} icon={lowBatteryIcon} zIndexOffset={1000} alt={t("map.lowBattery")}>
+                  <Popup><div dir={textDir}>{t("map.lowBattery")}</div></Popup>
+                </Marker>
+              )}
+              {stop && (
+                <Marker
+                  position={[stop.lat, stop.lng]}
+                  icon={recommendedStopIcon}
+                  zIndexOffset={2000}
+                  title={t("map.recommendedStop", { name: stop.name })}
+                  alt={t("map.recommendedStop", { name: stop.name })}
+                  eventHandlers={{ popupopen: () => setOpenedStopId(stop.stationId) }}
+                >
+                  <Popup>
+                    <div dir={textDir} className="space-y-1">
+                      <strong>{stop.name}</strong>
+                      <p className="text-sm">{t("map.kmIntoTrip", { km: number(Math.round(stop.distanceAlongKm)) })}</p>
+                      <p className="text-sm">{t("map.arriveWith", { percent: Math.round(stop.batteryOnArrivalPercent) })}</p>
+                      <CompanionHint stationId={stop.stationId} enabled={openedStopId === stop.stationId} />
+                      <DetailsLink stationId={stop.stationId} />
+                    </div>
+                  </Popup>
+                </Marker>
+              )}
+            </>
+          )}
 
-        {result && reachOrigin && (
-          <CircleMarker
-            center={reachOrigin}
-            radius={8}
-            pathOptions={{ color: "#1d4ed8", fillColor: "#1d4ed8", fillOpacity: 1 }}
-          >
-            <Popup>Start point</Popup>
-          </CircleMarker>
-        )}
+          {result && reachOrigin && (
+            <CircleMarker
+              center={reachOrigin}
+              radius={8}
+              pathOptions={{ color: "#1d4ed8", fillColor: "#1d4ed8", fillOpacity: 1 }}
+            >
+              <Popup><div dir={textDir}>{t("map.startPoint")}</div></Popup>
+            </CircleMarker>
+          )}
 
-        {userPos && (
-          <Marker position={userPos} icon={userIcon}><Popup>You are here</Popup></Marker>
-        )}
-        {destination && (
-          <Marker position={[destination.lat, destination.lng]} icon={destinationIcon}>
-            <Popup>{destination.label}</Popup>
-          </Marker>
-        )}
+          {userPos && (
+            <Marker position={userPos} icon={userIcon} alt={t("map.youAreHere")}>
+              <Popup><div dir={textDir}>{t("map.youAreHere")}</div></Popup>
+            </Marker>
+          )}
+          {destination && (
+            <Marker position={[destination.lat, destination.lng]} icon={destinationIcon} alt={destination.label}>
+              <Popup><div dir="auto">{destination.label}</div></Popup>
+            </Marker>
+          )}
 
-        <MarkerClusterGroup>
-          {stations?.map((station) => {
-            // Drawn separately with its own marker, so don't show a second pin
-            if (destination && station.id === tripResult?.recommendedStop?.stationId) return null;
-            const inReach = reachableIds.has(station.id);
-            return (
-              <Marker
-                key={station.id}
-                position={[station.lat, station.lng]}
-                icon={inReach ? reachableIcon : defaultIcon}
-                // After a check, chargers out of reach fade so the green ones stand out
-                opacity={result && !inReach ? 0.4 : 1}
-              >
-                <Popup>
-                  <div className="space-y-1">
-                    <strong>{station.name}</strong>
-                    <p className="text-sm">
-                      {station.avgRating !== null ? `★ ${station.avgRating.toFixed(1)}` : "No reviews"}
-                    </p>
-                    {inReach && <p className="text-sm text-green-700">{destination ? "✓ On your way" : "✓ Within your reach"}</p>}
-                    <Link to={`/stations/${station.id}`} className="text-sm underline">View details →</Link>
-                  </div>
-                </Popup>
-              </Marker>
-            );
-          })}
-        </MarkerClusterGroup>
-      </MapContainer>
+          <MarkerClusterGroup>
+            {stations?.map((station) => {
+              // Drawn separately with its own marker, so don't show a second pin
+              if (destination && station.id === stop?.stationId) return null;
+              const inReach = reachableIds.has(station.id);
+              const rating = station.avgRating !== null
+                ? number(station.avgRating, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+                : null;
+              return (
+                <Marker
+                  key={station.id}
+                  position={[station.lat, station.lng]}
+                  icon={inReach ? reachableIcon : defaultIcon}
+                  alt={station.name}
+                  // After a check, chargers out of reach fade so the green ones stand out
+                  opacity={result && !inReach ? 0.4 : 1}
+                >
+                  <Popup>
+                    <div dir={textDir} className="space-y-1">
+                      <strong>{station.name}</strong>
+                      <p className="text-sm">
+                        {rating !== null
+                          ? <span aria-label={t("common.ratingShort", { rating })}>★ {rating}</span>
+                          : t("common.noReviews")}
+                      </p>
+                      {inReach && (
+                        <p className="text-sm text-green-700">
+                          <span aria-hidden="true">✓ </span>{destination ? t("map.onYourWay") : t("map.withinReach")}
+                        </p>
+                      )}
+                      <DetailsLink stationId={station.id} />
+                    </div>
+                  </Popup>
+                </Marker>
+              );
+            })}
+          </MarkerClusterGroup>
+        </MapContainer>
+      </div>
 
-      {/* Outside MapContainer so clicks on the panel don't reach the map */}
+      {/* Outside MapContainer so clicks on the panel don't reach the map; these follow the page direction */}
       {!showReach && (
-        <Button className="absolute z-[1000] top-14 right-3 gap-1.5" size="sm" variant="secondary" onClick={openPanel}>
+        <Button className="absolute z-[1000] top-14 inset-e-3 gap-1.5" size="sm" variant="secondary" onClick={openPanel}>
           <Zap className="size-4" aria-hidden />
-          Check my range
+          {t("map.checkRange")}
         </Button>
       )}
       {showReach && (
@@ -342,8 +383,9 @@ export default function MapView() {
           reachResult={destination ? undefined : reachResult}
           tripResult={destination ? tripResult : undefined}
           isPending={active.isPending}
-          error={active.isError ? describeError(active.error) : null}
-          originLabel={userPos ? "Your location" : "Map center"}
+          error={active.isError ? describeError(active.error, t) : null}
+          originLabel={userPos ? t("reach.yourLocation") : t("reach.mapCenter")}
+          originIsMapCenter={!userPos}
           originKey={userPos ? userPos.join(",") : "map-center"}
           destination={destination}
           onDestinationChange={handleDestinationChange}

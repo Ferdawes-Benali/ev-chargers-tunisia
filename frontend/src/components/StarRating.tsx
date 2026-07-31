@@ -1,16 +1,18 @@
 import { useId, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/lib/format";
 
 const STARS = [1, 2, 3, 4, 5] as const;
 
-const starLabel = (n: number) => `${n} ${n === 1 ? "star" : "stars"}`;
-
 /** Read-only stars. Rounds to the nearest whole star; the exact value is in the label. */
 export function StarRatingDisplay({ rating, className }: { rating: number; className?: string }) {
+  const { t } = useTranslation();
+  const { number } = useLocale();
   const filled = Math.round(rating);
   return (
-    <span role="img" aria-label={`${rating} out of 5 stars`} className={cn("inline-flex gap-0.5", className)}>
+    <span role="img" aria-label={t("reviews.outOf", { rating: number(rating, { maximumFractionDigits: 1 }) })} className={cn("inline-flex gap-0.5", className)}>
       {STARS.map((n) => (
         <Star
           key={n}
@@ -33,6 +35,7 @@ interface StarRatingInputProps {
  * behave like any radio group. The inputs are visually hidden; their label shows the star.
  */
 export function StarRatingInput({ value, onChange, labelledBy }: StarRatingInputProps) {
+  const { t } = useTranslation();
   const name = useId();
   const [hovered, setHovered] = useState(0);
   const shown = hovered || value;
@@ -56,7 +59,7 @@ export function StarRatingInput({ value, onChange, labelledBy }: StarRatingInput
             value={n}
             checked={value === n}
             onChange={() => onChange(n)}
-            aria-label={starLabel(n)}
+            aria-label={t("reviews.stars", { count: n })}
             className="sr-only"
           />
           <Star

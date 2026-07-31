@@ -128,3 +128,8 @@
     @apply font-sans;
     }
 }
+
+/* Arabic: IBM Plex Sans Arabic for the Arabic script, Geist still covers Latin text and digits */
+:root[lang="ar"] body {
+    font-family: "IBM Plex Sans Arabic", 'Geist Variable', sans-serif;
+}
