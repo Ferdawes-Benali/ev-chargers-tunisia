@@ -12,7 +12,8 @@
     "logIn": "Se connecter",
     "logOut": "Se déconnecter",
     "google": "Continuer avec Google",
-    "github": "Continuer avec GitHub"
+    "github": "Continuer avec GitHub",
+    "tagline": "Enregistrez vos bornes de recharge favorites, donnez votre avis et ajoutez de nouvelles bornes à la carte."
   },
   "common": {
     "loading": "Chargement…",
@@ -36,7 +37,7 @@
   "list": {
     "title": "Bornes de recharge",
     "loadError": "Impossible de charger les bornes. Veuillez réessayer.",
-    "empty": "Aucune borne ne correspond à vos filtres.",
+    "empty": "Essayez un autre type de prise ou une puissance minimale plus basse.",
     "addFavorite": "Ajouter {{name}} aux favoris",
     "removeFavorite": "Retirer {{name}} des favoris",
     "filters": {
@@ -44,8 +45,14 @@
       "allConnectors": "Toutes les prises",
       "minPower": "Puissance minimale",
       "anyPower": "Toute puissance",
-      "powerAtLeast": "{{power}} kW et plus"
-    }
+      "powerAtLeast": "{{power}} kW et plus",
+      "title": "Filtres",
+      "clear": "Effacer les filtres"
+    },
+    "emptyTitle": "Aucune borne ne correspond à vos filtres.",
+    "count_one": "{{formatted}} borne de recharge",
+    "count_many": "{{formatted}} de bornes de recharge",
+    "count_other": "{{formatted}} bornes de recharge"
   },
   "map": {
     "locateMe": "Me localiser",
@@ -225,7 +232,18 @@
     "connectors": "Prises",
     "noConnectors": "Pas encore d'information sur les prises.",
     "connectorLine": "{{type}} — {{power}} kW × {{count}}",
-    "directions": "Itinéraire"
+    "directions": "Itinéraire",
+    "backToList": "Retour à la liste des bornes",
+    "adminPending": "Cette borne attend une vérification.",
+    "powerKw": "{{power}} kW",
+    "connectorCount": "× {{value}}",
+    "facts": {
+      "status": "Statut",
+      "maxPower": "Puissance max.",
+      "connectors": "Prises",
+      "rating": "Note",
+      "unknown": "Inconnue"
+    }
   },
   "reviews": {
     "title": "Avis",
@@ -273,13 +291,39 @@
       "connectorRequired": "Choisissez un type de prise",
       "powerInvalid": "Indiquez la puissance en kW",
       "powerPositive": "La puissance doit être supérieure à 0"
+    },
+    "subtitle": "Vous connaissez une borne de recharge absente de la carte ? Ajoutez-la pour les autres conducteurs.",
+    "mapLabel": "Emplacement sur la carte",
+    "sections": {
+      "location": "Emplacement",
+      "locationHelp": "Là où les conducteurs trouveront la borne.",
+      "details": "Détails de la borne",
+      "detailsHelp": "Le type de prise et sa puissance maximale."
+    },
+    "help": {
+      "name": "Le nom affiché sur place, ou le lieu où elle se trouve.",
+      "power": "Puissance de recharge maximale, en kilowatts."
+    },
+    "placeholders": {
+      "name": "ex. Borne rapide Lac 2",
+      "address": "ex. Avenue Habib Bourguiba, Tunis",
+      "connector": "Choisissez un type de prise",
+      "power": "ex. 50"
     }
   },
   "profile": {
     "title": "Profil",
     "loading": "Chargement du profil…",
     "favorites": "Favoris",
-    "noFavorites": "Pas encore de favoris — touchez le cœur d'une borne pour l'enregistrer ici.",
-    "loadError": "Impossible de charger vos favoris. Veuillez réessayer."
+    "noFavorites": "Touchez le cœur d'une borne pour l'enregistrer ici.",
+    "loadError": "Impossible de charger vos favoris. Veuillez réessayer.",
+    "account": "Compte",
+    "email": "E-mail",
+    "noFavoritesTitle": "Pas encore de favoris",
+    "browse": "Parcourir les bornes"
+  },
+  "theme": {
+    "toDark": "Passer au thème sombre",
+    "toLight": "Passer au thème clair"
   }
 }

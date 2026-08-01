@@ -27,11 +27,13 @@
     --color-destructive: var(--destructive);
     --color-accent-foreground: var(--accent-foreground);
     --color-accent: var(--accent);
+    --color-accent-ink: var(--accent-ink);
     --color-muted-foreground: var(--muted-foreground);
     --color-muted: var(--muted);
     --color-secondary-foreground: var(--secondary-foreground);
     --color-secondary: var(--secondary);
     --color-primary-foreground: var(--primary-foreground);
+    --color-primary-hover: var(--primary-hover);
     --color-primary: var(--primary);
     --color-popover-foreground: var(--popover-foreground);
     --color-popover: var(--popover);
@@ -39,6 +41,13 @@
     --color-card: var(--card);
     --color-foreground: var(--foreground);
     --color-background: var(--background);
+    /* Status fills (bars, dots, tinted backgrounds) and their readable text ("ink") variants */
+    --color-success: var(--success);
+    --color-success-ink: var(--success-ink);
+    --color-warning: var(--warning);
+    --color-warning-ink: var(--warning-ink);
+    --color-danger: var(--danger);
+    --color-danger-ink: var(--danger-ink);
     --radius-sm: calc(var(--radius) * 0.6);
     --radius-md: calc(var(--radius) * 0.8);
     --radius-lg: var(--radius);
@@ -48,88 +57,240 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* "EV energy" palette. Text on the green primary is dark: white on #22C55E fails contrast. */
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
+    --background: #F8FAFC;
+    --foreground: #0F172A;
+    --card: #FFFFFF;
+    --card-foreground: #0F172A;
+    --popover: #FFFFFF;
+    --popover-foreground: #0F172A;
+    --primary: #22C55E;
+    --primary-hover: #16A34A;
+    --primary-foreground: #0B1120;
+    --secondary: #F1F5F9;
+    --secondary-foreground: #0F172A;
+    --muted: #F1F5F9;
+    --muted-foreground: #475569;
+    --accent: #0EA5E9;
+    --accent-foreground: #0B1120;
+    --accent-ink: #0369A1;
+    --destructive: #DC2626;
+    --success: #22C55E;
+    --success-ink: #15803D;
+    --warning: #F59E0B;
+    --warning-ink: #B45309;
+    --danger: #EF4444;
+    --danger-ink: #B91C1C;
+    --border: #E2E8F0;
+    --input: #CBD5E1;
+    --ring: #0284C7;
+    --shadow-color: 15 23 42;
+    --chart-1: #22C55E;
+    --chart-2: #0EA5E9;
+    --chart-3: #F59E0B;
+    --chart-4: #EF4444;
+    --chart-5: #475569;
     --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+    --sidebar: #FFFFFF;
+    --sidebar-foreground: #0F172A;
+    --sidebar-primary: #22C55E;
+    --sidebar-primary-foreground: #0B1120;
+    --sidebar-accent: #F1F5F9;
+    --sidebar-accent-foreground: #0F172A;
+    --sidebar-border: #E2E8F0;
+    --sidebar-ring: #0284C7;
 }
 
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    --background: #0B1120;
+    --foreground: #F8FAFC;
+    --card: #111827;
+    --card-foreground: #F8FAFC;
+    --popover: #111827;
+    --popover-foreground: #F8FAFC;
+    --primary: #22C55E;
+    --primary-hover: #16A34A;
+    --primary-foreground: #0B1120;
+    --secondary: #1F2937;
+    --secondary-foreground: #F8FAFC;
+    --muted: #1F2937;
+    --muted-foreground: #94A3B8;
+    --accent: #0EA5E9;
+    --accent-foreground: #0B1120;
+    --accent-ink: #38BDF8;
+    --destructive: #F87171;
+    --success: #22C55E;
+    --success-ink: #4ADE80;
+    --warning: #F59E0B;
+    --warning-ink: #FBBF24;
+    --danger: #EF4444;
+    --danger-ink: #F87171;
+    --border: #1F2937;
+    --input: #334155;
+    --ring: #38BDF8;
+    --shadow-color: 0 0 0;
+    --chart-1: #22C55E;
+    --chart-2: #0EA5E9;
+    --chart-3: #F59E0B;
+    --chart-4: #EF4444;
+    --chart-5: #94A3B8;
+    --sidebar: #111827;
+    --sidebar-foreground: #F8FAFC;
+    --sidebar-primary: #22C55E;
+    --sidebar-primary-foreground: #0B1120;
+    --sidebar-accent: #1F2937;
+    --sidebar-accent-foreground: #F8FAFC;
+    --sidebar-border: #1F2937;
+    --sidebar-ring: #38BDF8;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
     }
-  body {
-    @apply bg-background text-foreground;
-    }
   html {
     @apply font-sans;
+    color-scheme: light;
+    }
+  html.dark {
+    color-scheme: dark;
+    }
+  body {
+    @apply bg-background text-foreground antialiased;
     }
 }
 
 /* Arabic: IBM Plex Sans Arabic for the Arabic script, Geist still covers Latin text and digits */
 :root[lang="ar"] body {
     font-family: "IBM Plex Sans Arabic", 'Geist Variable', sans-serif;
+}
+
+/* ---------- Leaflet, themed (maps themselves stay left-to-right) ---------- */
+
+:root .leaflet-container {
+    font-family: inherit;
+    background: var(--muted);
+}
+
+:root .leaflet-popup-content-wrapper,
+:root .leaflet-popup-tip {
+    background: var(--popover);
+    color: var(--popover-foreground);
+    box-shadow: 0 10px 25px -5px rgb(var(--shadow-color) / 0.25), 0 0 0 1px var(--border);
+}
+:root .leaflet-popup-content-wrapper {
+    border-radius: 0.875rem;
+}
+:root .leaflet-popup-content {
+    margin: 0.875rem 1rem;
+    font-size: 0.875rem;
+    line-height: 1.45;
+}
+:root .leaflet-popup-content p {
+    margin: 0;
+}
+:root .leaflet-popup-content a {
+    color: var(--accent-ink);
+}
+:root .leaflet-container a.leaflet-popup-close-button {
+    color: var(--muted-foreground);
+    border-radius: 0.375rem;
+}
+:root .leaflet-container a.leaflet-popup-close-button:hover,
+:root .leaflet-container a.leaflet-popup-close-button:focus-visible {
+    color: var(--foreground);
+}
+
+:root .leaflet-tooltip {
+    background: var(--popover);
+    color: var(--popover-foreground);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgb(var(--shadow-color) / 0.18);
+    font-size: 0.8125rem;
+}
+:root .leaflet-tooltip-top::before { border-top-color: var(--popover); }
+:root .leaflet-tooltip-bottom::before { border-bottom-color: var(--popover); }
+:root .leaflet-tooltip-left::before { border-left-color: var(--popover); }
+:root .leaflet-tooltip-right::before { border-right-color: var(--popover); }
+
+:root .leaflet-touch .leaflet-bar,
+:root .leaflet-bar {
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgb(var(--shadow-color) / 0.15);
+}
+:root .leaflet-bar a,
+:root .leaflet-touch .leaflet-bar a {
+    background: var(--card);
+    color: var(--foreground);
+    border-bottom-color: var(--border);
+}
+:root .leaflet-bar a:hover,
+:root .leaflet-bar a:focus,
+:root .leaflet-bar a:focus-visible {
+    background: var(--muted);
+    color: var(--foreground);
+}
+:root .leaflet-bar a:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: -2px;
+}
+:root .leaflet-bar a.leaflet-disabled {
+    background: var(--card);
+    color: var(--muted-foreground);
+    opacity: 0.6;
+}
+
+:root .leaflet-container .leaflet-control-attribution {
+    background: color-mix(in srgb, var(--card) 88%, transparent);
+    color: var(--muted-foreground);
+    border-start-start-radius: 0.375rem;
+}
+:root .leaflet-container .leaflet-control-attribution a {
+    color: var(--accent-ink);
+}
+
+/* Station clusters (the cluster library ships no stylesheet of its own here) */
+:root .marker-cluster {
+    background-clip: padding-box;
+    border-radius: 999px;
+    background-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+:root .marker-cluster div {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    margin-left: 5px;
+    margin-top: 5px;
+    border-radius: 999px;
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+    border: 2px solid var(--card);
+    font: 600 12px/1 'Geist Variable', sans-serif;
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 2px 6px rgb(var(--shadow-color) / 0.3);
+}
+:root .marker-cluster-medium {
+    background-color: color-mix(in srgb, var(--accent) 38%, transparent);
+}
+:root .marker-cluster-large {
+    background-color: color-mix(in srgb, var(--accent) 46%, transparent);
+}
+:root .leaflet-cluster-anim .leaflet-marker-icon,
+:root .leaflet-cluster-anim .leaflet-marker-shadow {
+    transition: transform 0.3s ease-out, opacity 0.3s ease-in;
+}
+:root .leaflet-cluster-spider-leg {
+    transition: stroke-dashoffset 0.3s ease-out, stroke-opacity 0.3s ease-in;
+}
+@media (prefers-reduced-motion: reduce) {
+    :root .leaflet-cluster-anim .leaflet-marker-icon,
+    :root .leaflet-cluster-anim .leaflet-marker-shadow,
+    :root .leaflet-cluster-spider-leg {
+        transition: none;
+    }
 }

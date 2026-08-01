@@ -39,7 +39,7 @@ export default function PlaceCard({ place, station, route, routeLoading, chargeM
   const distance = t("companion.meters", { value: number(meters) });
 
   return (
-    <Card aria-labelledby="companion-place-heading">
+    <Card aria-labelledby="companion-place-heading" className="bg-muted/40 ring-primary/40">
       <CardHeader className="grid-cols-[1fr_auto]">
         <div className="flex min-w-0 items-start gap-2">
           <Icon aria-hidden="true" className="mt-0.5 size-5 shrink-0" style={{ color }} />
@@ -61,7 +61,7 @@ export default function PlaceCard({ place, station, route, routeLoading, chargeM
       </CardHeader>
 
       <CardContent className="space-y-3">
-        <p className="text-sm">
+        <p className="text-sm tabular-nums">
           {realRoute ? (
             <>{t("companion.walk", { count: walkMinutes })} · {distance}</>
           ) : (
@@ -79,7 +79,7 @@ export default function PlaceCard({ place, station, route, routeLoading, chargeM
           target="_blank"
           rel="noopener noreferrer"
           aria-label={t("companion.openInMapsAria", { name })}
-          className={buttonVariants({ variant: "outline", size: "sm" })}
+          className={buttonVariants({ variant: "outline", className: "h-9 gap-2" })}
         >
           <ExternalLink aria-hidden="true" />
           {t("companion.openInMaps")}
@@ -101,18 +101,18 @@ function TimeBudget({ walkMinutes, chargeMinutes }: { walkMinutes: number; charg
   return (
     <div className="space-y-1">
       <div aria-hidden="true" dir="ltr" className="flex h-2.5 overflow-hidden rounded-full bg-muted">
-        <div className="bg-sky-500" style={{ width: pct(walkMinutes) }} />
-        {fits && <div className="bg-emerald-500" style={{ width: pct(stay) }} />}
-        <div className={fits ? "bg-sky-500" : "bg-amber-500"} style={{ width: pct(walkMinutes) }} />
+        <div className="bg-accent" style={{ width: pct(walkMinutes) }} />
+        {fits && <div className="bg-success" style={{ width: pct(stay) }} />}
+        <div className={fits ? "bg-accent" : "bg-warning"} style={{ width: pct(walkMinutes) }} />
       </div>
       {fits ? (
-        <p dir="ltr" className="flex justify-between gap-2 text-xs text-muted-foreground">
+        <p dir="ltr" className="flex justify-between gap-2 text-xs text-muted-foreground tabular-nums">
           <span>{t("companion.budget.there", { count: walkMinutes })}</span>
           <span className="font-medium text-foreground">{t("companion.budget.stay", { count: stay })}</span>
           <span>{t("companion.budget.back", { count: walkMinutes })}</span>
         </p>
       ) : (
-        <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+        <p className="text-xs font-medium text-warning-ink">
           {t("companion.budget.tight")}
         </p>
       )}

@@ -1,7 +1,7 @@
 export const BATTERY_COLORS = {
-  good: "#0E9F6E",
-  low: "#E8A33D",
-  critical: "#D1495B",
+  good: "#22C55E",
+  low: "#F59E0B",
+  critical: "#EF4444",
 } as const;
 
 /** Battery color by level: green above 35%, amber from 15 to 35%, red below 15%. */

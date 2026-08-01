@@ -12,7 +12,8 @@
     "logIn": "Log in",
     "logOut": "Log out",
     "google": "Continue with Google",
-    "github": "Continue with GitHub"
+    "github": "Continue with GitHub",
+    "tagline": "Save favorite chargers, write reviews and add new chargers to the map."
   },
   "common": {
     "loading": "Loading…",
@@ -36,7 +37,7 @@
   "list": {
     "title": "Chargers",
     "loadError": "Couldn't load chargers. Please try again.",
-    "empty": "No chargers match your filters.",
+    "empty": "Try another connector type or a lower minimum power.",
     "addFavorite": "Add {{name}} to favorites",
     "removeFavorite": "Remove {{name}} from favorites",
     "filters": {
@@ -44,8 +45,13 @@
       "allConnectors": "All connectors",
       "minPower": "Minimum power",
       "anyPower": "Any power",
-      "powerAtLeast": "{{power}}+ kW"
-    }
+      "powerAtLeast": "{{power}}+ kW",
+      "title": "Filters",
+      "clear": "Clear filters"
+    },
+    "emptyTitle": "No chargers match your filters.",
+    "count_one": "{{formatted}} charger",
+    "count_other": "{{formatted}} chargers"
   },
   "map": {
     "locateMe": "Locate me",
@@ -210,7 +216,18 @@
     "connectors": "Connectors",
     "noConnectors": "No connector info yet.",
     "connectorLine": "{{type}} — {{power}} kW × {{count}}",
-    "directions": "Get directions"
+    "directions": "Get directions",
+    "backToList": "Back to the chargers list",
+    "adminPending": "This charger is waiting for verification.",
+    "powerKw": "{{power}} kW",
+    "connectorCount": "× {{value}}",
+    "facts": {
+      "status": "Status",
+      "maxPower": "Max power",
+      "connectors": "Connectors",
+      "rating": "Rating",
+      "unknown": "Unknown"
+    }
   },
   "reviews": {
     "title": "Reviews",
@@ -256,13 +273,39 @@
       "connectorRequired": "Choose a connector type",
       "powerInvalid": "Enter the power in kW",
       "powerPositive": "Power must be greater than 0"
+    },
+    "subtitle": "Know a charger that's missing? Add it so other drivers can find it.",
+    "mapLabel": "Location on the map",
+    "sections": {
+      "location": "Location",
+      "locationHelp": "Where drivers will find the charger.",
+      "details": "Charger details",
+      "detailsHelp": "The connector and its maximum power."
+    },
+    "help": {
+      "name": "The name drivers see on site, or the place it's at.",
+      "power": "Maximum charging power, in kilowatts."
+    },
+    "placeholders": {
+      "name": "e.g. Lac 2 fast charger",
+      "address": "e.g. Avenue Habib Bourguiba, Tunis",
+      "connector": "Choose a connector type",
+      "power": "e.g. 50"
     }
   },
   "profile": {
     "title": "Profile",
     "loading": "Loading profile…",
     "favorites": "Favorites",
-    "noFavorites": "No favorites yet — tap the heart on a charger to save it here.",
-    "loadError": "Couldn't load your favorites. Please try again."
+    "noFavorites": "Tap the heart on a charger to save it here.",
+    "loadError": "Couldn't load your favorites. Please try again.",
+    "account": "Account",
+    "email": "Email",
+    "noFavoritesTitle": "No favorites yet",
+    "browse": "Browse chargers"
+  },
+  "theme": {
+    "toDark": "Switch to dark theme",
+    "toLight": "Switch to light theme"
   }
 }
