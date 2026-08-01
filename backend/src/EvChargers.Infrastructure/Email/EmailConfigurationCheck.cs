@@ -23,8 +23,8 @@ public class EmailConfigurationCheck : IHostedService
         if (!_environment.IsDevelopment() && !string.IsNullOrWhiteSpace(_options.DevRedirectTo))
         {
             _logger.LogWarning(
-                "Email:DevRedirectTo is set ({RedirectTo}) but the environment is {Environment}: it is ignored and emails go to their real recipients. Remove the setting from this host.",
-                EmailMasking.Mask(_options.DevRedirectTo.Trim()), _environment.EnvironmentName);
+                "Email:DevRedirectTo is set outside Development (environment {Environment}) and is ignored: emails go to their real recipients. Remove the setting from this host.",
+                _environment.EnvironmentName);
         }
         return Task.CompletedTask;
     }

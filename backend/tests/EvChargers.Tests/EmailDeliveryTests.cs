@@ -340,7 +340,7 @@ public class EmailConfigurationCheckTests
         var entry = logger.Entries.Should().ContainSingle().Subject;
         entry.Level.Should().Be(LogLevel.Warning);
         entry.Message.Should().Contain("ignored").And.Contain("Production")
-            .And.Contain("f***@example.com").And.NotContain("ferdawes@");
+            .And.Contain("Email:DevRedirectTo").And.NotContain("ferdawes").And.NotContain("example.com");
     }
 
     [Theory]
