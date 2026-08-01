@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
+import { Coffee } from "lucide-react";
 import { useCompanion, useWalkingRoute } from "@/hooks/useCompanion";
 import { useLocale } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import SectionCard from "@/components/SectionCard";
 import CompanionMap from "@/components/companion/CompanionMap";
 import PlaceCard from "@/components/companion/PlaceCard";
 import PlaceList from "@/components/companion/PlaceList";
@@ -64,31 +66,34 @@ export default function ChargingCompanion({ station }: { station: StationDetail 
   };
 
   return (
-    <section aria-labelledby="companion-heading" className="space-y-3">
-      <div>
-        <h2 id="companion-heading" className="font-semibold">{t("companion.title")}</h2>
-        {data && (
+    <SectionCard
+      title={t("companion.title")}
+      titleId="companion-heading"
+      icon={Coffee}
+      description={
+        data && (
           data.chargeMinutes !== null && data.backBy ? (
             <>
-              <p className="text-sm">
+              <p className="text-foreground tabular-nums">
                 <Trans
                   i18nKey="companion.chargeFor"
                   count={data.chargeMinutes}
                   values={{ time: data.backBy }}
-                  components={{ strong: <strong /> }}
+                  components={{ strong: <strong className="font-semibold text-success-ink" /> }}
                 />
               </p>
               {data.maxPowerKw !== null && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs tabular-nums">
                   {t("companion.chargerHint", { power: number(data.maxPowerKw) })}
                 </p>
               )}
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">{t("companion.shortWalk")}</p>
+            <p>{t("companion.shortWalk")}</p>
           )
-        )}
-      </div>
+        )
+      }
+    >
 
       {isLoading ? (
         <div className="space-y-2" aria-busy="true" aria-label={t("companion.loading")}>
@@ -97,7 +102,7 @@ export default function ChargingCompanion({ station }: { station: StationDetail 
             <Skeleton className="h-20" />
             <Skeleton className="h-20" />
           </div>
-          <Skeleton className="h-62.5 w-full" />
+          <Skeleton className="h-62.5 w-full rounded-xl" />
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
         </div>
@@ -112,6 +117,7 @@ export default function ChargingCompanion({ station }: { station: StationDetail 
           <div role="group" aria-label={t("companion.filters")} className="flex flex-wrap gap-2">
             <Button
               size="sm"
+              className="h-8 rounded-full px-3"
               variant={filter === "all" ? "default" : "outline"}
               aria-pressed={filter === "all"}
               onClick={() => toggleFilter("all")}
@@ -122,6 +128,7 @@ export default function ChargingCompanion({ station }: { station: StationDetail 
               <Button
                 key={group}
                 size="sm"
+                className="h-8 rounded-full px-3"
                 variant={filter === group ? "default" : "outline"}
                 aria-pressed={filter === group}
                 onClick={() => toggleFilter(group)}
@@ -158,11 +165,11 @@ export default function ChargingCompanion({ station }: { station: StationDetail 
       {data && !data.unavailable && (
         <p className="text-xs text-muted-foreground">
           {t("companion.credit")}{" "}
-          <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline">
+          <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="rounded-sm text-accent-ink underline underline-offset-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
             {t("companion.creditLink")}
           </a>
         </p>
       )}
-    </section>
+    </SectionCard>
   );
 }

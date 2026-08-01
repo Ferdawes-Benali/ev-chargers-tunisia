@@ -1,9 +1,10 @@
 import { useEffect } from "react";
-import { MapContainer, TileLayer, CircleMarker, Polyline, Tooltip, useMap } from "react-leaflet";
+import { MapContainer, CircleMarker, Polyline, Tooltip, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { pickPlaceName } from "@/lib/placeName";
 import { useLocale } from "@/lib/format";
+import MapTiles from "@/components/MapTiles";
 import type { CompanionPlace, WalkingRoute } from "@/types/companion";
 import type { StationDetail } from "@/types/station";
 import { CATEGORIES } from "./meta";
@@ -24,17 +25,14 @@ export default function CompanionMap({ station, places, selected, route, onSelec
 
   return (
     // Maps stay left-to-right in every language; tooltip text follows the page direction
-    <div dir="ltr" className="overflow-hidden rounded-md border">
+    <div dir="ltr" className="isolate overflow-hidden rounded-xl border">
       <MapContainer center={[station.lat, station.lng]} zoom={16} style={{ height: "250px", width: "100%" }}>
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        />
+        <MapTiles />
         <FitView station={station} places={places} selected={selected} route={route} />
         {route && route.points.length > 1 && (
           <Polyline
             positions={route.points}
-            pathOptions={{ color: "#0e9d9f", weight: 5, opacity: 0.85, dashArray: "1 8", lineCap: "round" }}
+            pathOptions={{ color: "#0EA5E9", weight: 5, opacity: 0.9, dashArray: "1 8", lineCap: "round" }}
             interactive={false}
           />
         )}
@@ -60,7 +58,7 @@ export default function CompanionMap({ station, places, selected, route, onSelec
         <CircleMarker
           center={[station.lat, station.lng]}
           radius={8}
-          pathOptions={{ color: "#ffffff", weight: 2, fillColor: "#0e9d9f", fillOpacity: 1 }}
+          pathOptions={{ color: "#ffffff", weight: 2.5, fillColor: "#22C55E", fillOpacity: 1 }}
         >
           <Tooltip><span dir="auto">{station.name}</span></Tooltip>
         </CircleMarker>
