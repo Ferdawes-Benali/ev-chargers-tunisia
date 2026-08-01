@@ -173,6 +173,12 @@
     background: var(--muted);
 }
 
+/* Dark theme: darken the OpenStreetMap tiles only. Markers, clusters, routes, popups and
+   controls live in other panes, so they keep their real colors. */
+.dark .leaflet-tile-pane {
+    filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+
 :root .leaflet-popup-content-wrapper,
 :root .leaflet-popup-tip {
     background: var(--popover);
