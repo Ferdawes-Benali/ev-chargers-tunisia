@@ -46,3 +46,43 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/dependency-review-action@v4
+
+  # Builds the backend Docker image and scans it with Trivy for CRITICAL/HIGH
+  # vulnerabilities that have a fix available. The table step fails the job and
+  # prints findings in the log; the SARIF steps always run and publish results to
+  # the Security tab (Code scanning) under the "trivy" category.
+  # Third-party actions are pinned to full commit SHAs (version in the comment)
+  # because tags are mutable: a moved or compromised tag can't swap in new code.
+  image-scan:
+    needs: backend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t evchargers-api:${{ github.sha }} ./backend
+      - name: Trivy scan (table)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: evchargers-api:${{ github.sha }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+          format: table
+      - name: Trivy scan (SARIF)
+        if: always()
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: evchargers-api:${{ github.sha }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '0'
+          format: sarif
+          output: trivy-results.sarif
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy
