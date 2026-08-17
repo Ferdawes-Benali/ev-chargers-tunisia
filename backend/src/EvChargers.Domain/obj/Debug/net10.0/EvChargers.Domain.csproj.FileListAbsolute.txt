@@ -1,0 +1,12 @@
+D:\ev-chargers-tunisia\backend\src\EvChargers.Domain\bin\Debug\net10.0\EvChargers.Domain.deps.json
+D:\ev-chargers-tunisia\backend\src\EvChargers.Domain\bin\Debug\net10.0\EvChargers.Domain.dll
+D:\ev-chargers-tunisia\backend\src\EvChargers.Domain\bin\Debug\net10.0\EvChargers.Domain.pdb
+D:\ev-chargers-tunisia\backend\src\EvChargers.Domain\obj\Debug\net10.0\EvChargers.Domain.GeneratedMSBuildEditorConfig.editorconfig
+D:\ev-chargers-tunisia\backend\src\EvChargers.Domain\obj\Debug\net10.0\EvChargers.Domain.AssemblyInfoInputs.cache
+D:\ev-chargers-tunisia\backend\src\EvChargers.Domain\obj\Debug\net10.0\EvChargers.Domain.AssemblyInfo.cs
+D:\ev-chargers-tunisia\backend\src\EvChargers.Domain\obj\Debug\net10.0\EvChargers.Domain.csproj.CoreCompileInputs.cache
+D:\ev-chargers-tunisia\backend\src\EvChargers.Domain\obj\Debug\net10.0\EvChargers.Domain.sourcelink.json
+D:\ev-chargers-tunisia\backend\src\EvChargers.Domain\obj\Debug\net10.0\EvChargers.Domain.dll
+D:\ev-chargers-tunisia\backend\src\EvChargers.Domain\obj\Debug\net10.0\refint\EvChargers.Domain.dll
+D:\ev-chargers-tunisia\backend\src\EvChargers.Domain\obj\Debug\net10.0\EvChargers.Domain.pdb
+D:\ev-chargers-tunisia\backend\src\EvChargers.Domain\obj\Debug\net10.0\ref\EvChargers.Domain.dll
