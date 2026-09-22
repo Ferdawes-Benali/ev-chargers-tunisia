@@ -11,6 +11,17 @@ public class EfStationRepository : IStationRepository
     private readonly AppDbContext _db;
     public EfStationRepository(AppDbContext db) => _db = db;
 
+    public async Task AddReviewAsync(Review review, CancellationToken ct)
+    {
+        _db.Reviews.Add(review);
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task AddCheckinAsync(AvailabilityCheckin checkin, CancellationToken ct)
+    {
+        _db.Checkins.Add(checkin);
+        await _db.SaveChangesAsync(ct);
+    }
     public async Task<List<Station>> GetPagedAsync(int page, int size, CancellationToken ct) =>
         await _db.Stations
             .Skip((page - 1) * size)
