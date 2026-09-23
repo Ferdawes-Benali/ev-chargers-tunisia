@@ -1,3 +1,4 @@
+using EvChargers.Application.Common;
 using NetTopologySuite.Geometries;
 using EvChargers.Application.Common.Mapping;
 using EvChargers.Application.DTOs;
@@ -12,10 +13,11 @@ public class StationService : IStationService
     private readonly IStationRepository _stations;
     public StationService(IStationRepository stations) => _stations = stations;
 
-    public async Task<List<StationListItemDto>> GetPagedAsync(int page, int size, CancellationToken ct)
+    public async Task<PagedResult<StationListItemDto>> GetPagedAsync(int page, int size, string? connectorType, int? minPowerKw, CancellationToken ct)
     {
-        var list = await _stations.GetPagedAsync(page, size, ct);
-        return list.Select(s => s.ToListItemDto()).ToList();
+        var (items, total) = await _stations.GetPagedAsync(page, size, connectorType, minPowerKw, ct);
+        var dtos = items.Select(s => s.ToListItemDto()).ToList();
+        return new PagedResult<StationListItemDto>(dtos, page, size, total);
     }
 
     public async Task<StationDetailDto?> GetByIdAsync(Guid id, CancellationToken ct)

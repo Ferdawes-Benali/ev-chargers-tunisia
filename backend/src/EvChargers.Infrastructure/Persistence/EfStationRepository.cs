@@ -22,11 +22,31 @@ public class EfStationRepository : IStationRepository
         _db.Checkins.Add(checkin);
         await _db.SaveChangesAsync(ct);
     }
-    public async Task<List<Station>> GetPagedAsync(int page, int size, CancellationToken ct) =>
-        await _db.Stations
+    public async Task<(List<Station> Items, int Total)> GetPagedAsync(
+    int page, int size, string? connectorType, int? minPowerKw, CancellationToken ct)
+    {
+        size = Math.Min(size, 100); // cap page size
+
+        var query = _db.Stations.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(connectorType) &&
+            Enum.TryParse<ConnectorType>(connectorType, true, out var type))
+        {
+            query = query.Where(s => s.Connectors.Any(c => c.Type == type));
+        }
+
+        if (minPowerKw.HasValue)
+        {
+            query = query.Where(s => s.Connectors.Any(c => c.PowerKw >= minPowerKw.Value));
+        }
+
+        var total = await query.CountAsync(ct);
+        var items = await query
             .Skip((page - 1) * size)
             .Take(size)
             .ToListAsync(ct);
+        return (items, total);
+    }
 
     public Task<Station?> GetByIdAsync(Guid id, CancellationToken ct) =>
         _db.Stations
