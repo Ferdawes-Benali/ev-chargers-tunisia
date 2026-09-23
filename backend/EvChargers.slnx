@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/EvChargers.API/EvChargers.API.csproj" />
+    <Project Path="src/EvChargers.Application/EvChargers.Application.csproj" />
+    <Project Path="src/EvChargers.Domain/EvChargers.Domain.csproj" />
+    <Project Path="src/EvChargers.Infrastructure/EvChargers.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/EvChargers.Tests/EvChargers.Tests.csproj" />
+  </Folder>
+</Solution>
