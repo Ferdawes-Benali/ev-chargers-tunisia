@@ -25,9 +25,10 @@ public class EfStationRepository : IStationRepository
     public async Task<(List<Station> Items, int Total)> GetPagedAsync(
     int page, int size, string? connectorType, int? minPowerKw, CancellationToken ct)
     {
-        size = Math.Min(size, 100); // cap page size
+        page = Math.Max(page, 1);
+        size = Math.Clamp(size, 1, 100);
 
-        var query = _db.Stations.AsQueryable();
+        var query = _db.Stations.Include(s => s.Reviews).AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(connectorType) &&
             Enum.TryParse<ConnectorType>(connectorType, true, out var type))
@@ -39,6 +40,8 @@ public class EfStationRepository : IStationRepository
         {
             query = query.Where(s => s.Connectors.Any(c => c.PowerKw >= minPowerKw.Value));
         }
+
+        query = query.OrderBy(s => s.CreatedAt);
 
         var total = await query.CountAsync(ct);
         var items = await query
@@ -58,8 +61,9 @@ public class EfStationRepository : IStationRepository
     {
         var origin = new Point(lng, lat) { SRID = 4326 };
         return await _db.Stations
+            .Include(s => s.Reviews)
             .Where(s => s.Status == StationStatus.Verified
-                     && s.Location.IsWithinDistance(origin, radiusKm * 1000))
+                    && s.Location.IsWithinDistance(origin, radiusKm * 1000))
             .ToListAsync(ct);
     }
 

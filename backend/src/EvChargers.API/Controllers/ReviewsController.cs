@@ -18,9 +18,12 @@ public class ReviewsController : ControllerBase
         _validator = validator;
     }
 
-    [HttpGet]
+        [HttpGet]
     public async Task<IActionResult> List(Guid stationId, CancellationToken ct)
-        => Ok(await _stations.GetReviewsAsync(stationId, ct));
+    {
+        var reviews = await _stations.GetReviewsAsync(stationId, ct);
+        return reviews is null ? NotFound() : Ok(reviews);
+    }
 
     [HttpPost]
     public async Task<IActionResult> Create(Guid stationId, [FromBody] CreateReviewRequest req, CancellationToken ct)
@@ -29,7 +32,7 @@ public class ReviewsController : ControllerBase
         if (!validation.IsValid)
             return BadRequest(validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }));
 
-        await _stations.AddReviewAsync(stationId, req, ct);
-        return Created();
+        var success = await _stations.AddReviewAsync(stationId, req, ct);
+        return success ? Created() : NotFound();
     }
 }
