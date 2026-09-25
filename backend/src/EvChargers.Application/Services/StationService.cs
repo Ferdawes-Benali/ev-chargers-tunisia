@@ -124,4 +124,10 @@ public async Task<bool> AddCheckinAsync(Guid stationId, CheckinRequest req, Canc
     await _stations.AddCheckinAsync(checkin, ct);
     return true;
 }
+
+    public async Task<List<StationListItemDto>> GetByBoundingBoxAsync(double south, double west, double north, double east, CancellationToken ct)
+    {
+        var list = await _stations.GetByBoundingBoxAsync(south, west, north, east, ct);
+        return list.Select(s => s.ToListItemDto()).ToList();    
+    }
 }

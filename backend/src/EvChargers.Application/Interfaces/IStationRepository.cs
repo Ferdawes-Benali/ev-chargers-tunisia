@@ -11,4 +11,5 @@ public interface IStationRepository
     Task DeleteAsync(Guid id, CancellationToken ct);
     Task AddReviewAsync(Review review, CancellationToken ct);
     Task AddCheckinAsync(AvailabilityCheckin checkin, CancellationToken ct);
+    Task<List<Station>> GetByBoundingBoxAsync(double south, double west, double north, double east, CancellationToken ct);
 }

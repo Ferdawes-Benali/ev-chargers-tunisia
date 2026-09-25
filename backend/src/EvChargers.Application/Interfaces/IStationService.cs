@@ -15,4 +15,7 @@ public interface IStationService
     
     Task<List<ReviewDto>?> GetReviewsAsync(Guid stationId, CancellationToken ct);
     Task<bool> AddReviewAsync(Guid stationId, CreateReviewRequest req, CancellationToken ct);
-    Task<bool> AddCheckinAsync(Guid stationId, CheckinRequest req, CancellationToken ct);}
+    Task<bool> AddCheckinAsync(Guid stationId, CheckinRequest req, CancellationToken ct);
+    Task<List<StationListItemDto>> GetByBoundingBoxAsync(double south, double west, double north, double east, CancellationToken ct);
+}
+    
