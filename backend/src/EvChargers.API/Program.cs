@@ -11,6 +11,16 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<EvChargers.Application.Interfaces.IStationService, EvChargers.Application.Services.StationService>();
 builder.Services.AddValidatorsFromAssembly(typeof(EvChargers.Application.Validators.CreateStationRequestValidator).Assembly);
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontendDev", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 
 var app = builder.Build();
 app.UseMiddleware<EvChargers.API.Middleware.ExceptionHandlingMiddleware>();
@@ -27,7 +37,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
+app.UseCors("AllowFrontendDev");
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();

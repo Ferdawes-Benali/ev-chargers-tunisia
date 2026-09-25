@@ -12,10 +12,13 @@ public class StationsController : ControllerBase
     private readonly IStationService _stations;
     private readonly IValidator<CreateStationRequest> _validator;
 
-    public StationsController(IStationService stations, IValidator<CreateStationRequest> validator)
+    private readonly IValidator<CheckinRequest> _checkinValidator;
+
+    public StationsController(IStationService stations, IValidator<CreateStationRequest> validator, IValidator<CheckinRequest> checkinValidator)
     {
         _stations = stations;
         _validator = validator;
+        _checkinValidator = checkinValidator;
     }
 
     [HttpGet]
@@ -76,7 +79,18 @@ public class StationsController : ControllerBase
     [HttpPost("{id:guid}/checkin")]
     public async Task<IActionResult> Checkin(Guid id, [FromBody] CheckinRequest req, CancellationToken ct)
     {
-        await _stations.AddCheckinAsync(id, req, ct);
-        return Created();
+        var validation = await _checkinValidator.ValidateAsync(req, ct);
+        if (!validation.IsValid)
+            return BadRequest(validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }));
+
+        var success = await _stations.AddCheckinAsync(id, req, ct);
+        return success ? Created() : NotFound();
     }
+
+    [HttpGet("bbox")]
+    public async Task<IActionResult> Bbox(
+        [FromQuery] double south, [FromQuery] double west,
+        [FromQuery] double north, [FromQuery] double east,
+        CancellationToken ct)
+        => Ok(await _stations.GetByBoundingBoxAsync(south, west, north, east, ct));
 }

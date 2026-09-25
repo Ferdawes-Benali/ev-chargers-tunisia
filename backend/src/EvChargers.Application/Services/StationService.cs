@@ -87,33 +87,47 @@ public class StationService : IStationService
         return true;
     }
 
-    public async Task<List<ReviewDto>> GetReviewsAsync(Guid stationId, CancellationToken ct)
+    
+    public async Task<List<ReviewDto>?> GetReviewsAsync(Guid stationId, CancellationToken ct)
     {
         var station = await _stations.GetByIdAsync(stationId, ct);
-        return station?.Reviews.Select(r => new ReviewDto(r.Id, r.Rating, r.Comment, r.CreatedAt)).ToList()
-               ?? [];
+        return station?.Reviews.Select(r => new ReviewDto(r.Id, r.Rating, r.Comment, r.CreatedAt)).ToList();
     }
 
-    public async Task AddReviewAsync(Guid stationId, CreateReviewRequest req, CancellationToken ct)
-    {
-        var review = new Review
-        {
-            Id = Guid.NewGuid(),
-            StationId = stationId,
-            Rating = req.Rating,
-            Comment = req.Comment
-        };
-        await _stations.AddReviewAsync(review, ct);
-    }
+    public async Task<bool> AddReviewAsync(Guid stationId, CreateReviewRequest req, CancellationToken ct)
+{
+    var station = await _stations.GetByIdAsync(stationId, ct);
+    if (station is null) return false;
 
-    public async Task AddCheckinAsync(Guid stationId, CheckinRequest req, CancellationToken ct)
+    var review = new Review
     {
-        var checkin = new AvailabilityCheckin
-        {
-            Id = Guid.NewGuid(),
-            StationId = stationId,
-            State = Enum.Parse<CheckinState>(req.State, ignoreCase: true)
-        };
-        await _stations.AddCheckinAsync(checkin, ct);
+        Id = Guid.NewGuid(),
+        StationId = stationId,
+        Rating = req.Rating,
+        Comment = req.Comment
+    };
+    await _stations.AddReviewAsync(review, ct);
+    return true;
+}
+
+public async Task<bool> AddCheckinAsync(Guid stationId, CheckinRequest req, CancellationToken ct)
+{
+    var station = await _stations.GetByIdAsync(stationId, ct);
+    if (station is null) return false;
+
+    var checkin = new AvailabilityCheckin
+    {
+        Id = Guid.NewGuid(),
+        StationId = stationId,
+        State = Enum.Parse<CheckinState>(req.State, ignoreCase: true)
+    };
+    await _stations.AddCheckinAsync(checkin, ct);
+    return true;
+}
+
+    public async Task<List<StationListItemDto>> GetByBoundingBoxAsync(double south, double west, double north, double east, CancellationToken ct)
+    {
+        var list = await _stations.GetByBoundingBoxAsync(south, west, north, east, ct);
+        return list.Select(s => s.ToListItemDto()).ToList();    
     }
 }
