@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using FluentValidation;
 using EvChargers.Application.DTOs;
 using EvChargers.Application.Interfaces;
@@ -24,7 +25,7 @@ public class ReviewsController : ControllerBase
         var reviews = await _stations.GetReviewsAsync(stationId, ct);
         return reviews is null ? NotFound() : Ok(reviews);
     }
-
+    [Authorize]
     [HttpPost]
     public async Task<IActionResult> Create(Guid stationId, [FromBody] CreateReviewRequest req, CancellationToken ct)
     {

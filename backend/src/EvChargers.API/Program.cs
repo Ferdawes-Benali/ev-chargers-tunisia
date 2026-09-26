@@ -1,6 +1,8 @@
 using Serilog;
 using EvChargers.Infrastructure;
 using FluentValidation;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog((ctx, cfg) => cfg.WriteTo.Console().ReadFrom.Configuration(ctx.Configuration));
@@ -20,7 +22,18 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod();
     });
 });
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = "https://ypeieloulsktqgwwwtft.supabase.co/auth/v1";
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateAudience = true,
+            ValidAudience = "authenticated",
+        };
+    });
 
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 app.UseMiddleware<EvChargers.API.Middleware.ExceptionHandlingMiddleware>();
@@ -39,6 +52,7 @@ if (app.Environment.IsDevelopment())
 }
 app.UseCors("AllowFrontendDev");
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();

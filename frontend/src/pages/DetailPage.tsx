@@ -2,11 +2,25 @@ import { useParams } from "react-router-dom";
 import { useStation } from "@/hooks/useStation";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { Button } from "@/components/ui/button";
 
 export default function DetailPage() {
   const { id } = useParams();
   const { data: station, isLoading, error } = useStation(id);
+  const { isLoggedIn } = useAuth();
+  const { data: profile } = useProfile(isLoggedIn);
+  const queryClient = useQueryClient();
 
+  const verifyMutation = useMutation({
+    mutationFn: async () => api.post(`/api/v1/stations/${id}/verify`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["station", id] });
+    },
+});
   if (isLoading) {
     return (
       <div className="p-4 space-y-3">
@@ -31,6 +45,12 @@ export default function DetailPage() {
           {station.status}
         </Badge>
       </div>
+
+      {profile?.isAdmin && station.status === "Pending" && (
+        <Button size="sm" onClick={() => verifyMutation.mutate()} disabled={verifyMutation.isPending}>
+          {verifyMutation.isPending ? "Verifying..." : "Verify Station (Admin)"}
+        </Button>
+      )}
 
       {station.address && <p className="text-muted-foreground">{station.address}</p>}
       {station.operatorName && <p className="text-sm">Operator: {station.operatorName}</p>}

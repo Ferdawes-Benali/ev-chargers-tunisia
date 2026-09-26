@@ -5,7 +5,7 @@ import ListPage from "./pages/ListPage";
 import DetailPage from "./pages/DetailPage";
 import SubmitPage from "./pages/SubmitPage";
 import ProfilePage from "./pages/ProfilePage";
-
+import LoginPage from "./pages/LoginPage";
 function App() {
   return (
     <BrowserRouter>
@@ -16,6 +16,7 @@ function App() {
           <Route path="/stations/:id" element={<DetailPage />} />
           <Route path="/submit" element={<SubmitPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/login" element={<LoginPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

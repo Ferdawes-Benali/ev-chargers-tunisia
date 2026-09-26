@@ -83,7 +83,7 @@ function LocateButton({ onLocate }: { onLocate: (lat: number, lng: number) => vo
   return (
     <Button
       onClick={handleClick}
-      className="absolute z-[1000] top-3 right-3"
+      className="absolute z-1000 top-3 right-3"
       size="sm"
     >
       Locate me
