@@ -1,9 +1,9 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using EvChargers.Application.DTOs;
 using EvChargers.Application.Interfaces;
 using EvChargers.Domain.Entities;
+using EvChargers.API.Extensions;
 
 namespace EvChargers.API.Controllers;
 
@@ -15,15 +15,10 @@ public class MeController : ControllerBase
     private readonly IUserRepository _users;
     public MeController(IUserRepository users) => _users = users;
 
-    private Guid CurrentUserId =>
-        Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? User.FindFirstValue("sub")
-            ?? throw new InvalidOperationException("No user id claim found"));
-
     [HttpGet]
     public async Task<IActionResult> GetProfile(CancellationToken ct)
     {
-        var userId = CurrentUserId;
+        var userId = User.GetUserId();
         var user = await _users.GetByIdAsync(userId, ct);
 
         if (user is null)
@@ -39,14 +34,14 @@ public class MeController : ControllerBase
     [HttpPut("favorites/{stationId:guid}")]
     public async Task<IActionResult> AddFavorite(Guid stationId, CancellationToken ct)
     {
-        await _users.AddFavoriteAsync(CurrentUserId, stationId, ct);
+        await _users.AddFavoriteAsync(User.GetUserId(), stationId, ct);
         return NoContent();
     }
 
     [HttpDelete("favorites/{stationId:guid}")]
     public async Task<IActionResult> RemoveFavorite(Guid stationId, CancellationToken ct)
     {
-        await _users.RemoveFavoriteAsync(CurrentUserId, stationId, ct);
+        await _users.RemoveFavoriteAsync(User.GetUserId(), stationId, ct);
         return NoContent();
     }
 }

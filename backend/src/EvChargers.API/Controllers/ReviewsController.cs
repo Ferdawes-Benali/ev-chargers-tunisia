@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using FluentValidation;
 using EvChargers.Application.DTOs;
+using EvChargers.Application.Common;
 using EvChargers.Application.Interfaces;
+using EvChargers.API.Extensions;
 
 namespace EvChargers.API.Controllers;
 
@@ -19,12 +21,13 @@ public class ReviewsController : ControllerBase
         _validator = validator;
     }
 
-        [HttpGet]
+    [HttpGet]
     public async Task<IActionResult> List(Guid stationId, CancellationToken ct)
     {
         var reviews = await _stations.GetReviewsAsync(stationId, ct);
         return reviews is null ? NotFound() : Ok(reviews);
     }
+
     [Authorize]
     [HttpPost]
     public async Task<IActionResult> Create(Guid stationId, [FromBody] CreateReviewRequest req, CancellationToken ct)
@@ -33,7 +36,11 @@ public class ReviewsController : ControllerBase
         if (!validation.IsValid)
             return BadRequest(validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }));
 
-        var success = await _stations.AddReviewAsync(stationId, req, ct);
-        return success ? Created() : NotFound();
+        return await _stations.AddReviewAsync(stationId, req, User.GetUserId(), ct) switch
+        {
+            ReviewUpsertResult.Created => Created(),
+            ReviewUpsertResult.Updated => Ok(),
+            _ => NotFound(),
+        };
     }
 }
