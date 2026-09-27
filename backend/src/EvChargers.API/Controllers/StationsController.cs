@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using FluentValidation;
 using EvChargers.Application.DTOs;
+using EvChargers.Application.Common;
 using EvChargers.Application.Interfaces;
+using EvChargers.API.Extensions;
+using Microsoft.AspNetCore.Authorization;
 
 namespace EvChargers.API.Controllers;
 
@@ -11,15 +14,24 @@ public class StationsController : ControllerBase
 {
     private readonly IStationService _stations;
     private readonly IValidator<CreateStationRequest> _validator;
-
     private readonly IValidator<CheckinRequest> _checkinValidator;
 
-    public StationsController(IStationService stations, IValidator<CreateStationRequest> validator, IValidator<CheckinRequest> checkinValidator)
+    public StationsController(
+        IStationService stations,
+        IValidator<CreateStationRequest> validator,
+        IValidator<CheckinRequest> checkinValidator)
     {
         _stations = stations;
         _validator = validator;
         _checkinValidator = checkinValidator;
     }
+
+    private IActionResult ToActionResult(OperationResult result) => result switch
+    {
+        OperationResult.Ok => NoContent(),
+        OperationResult.Forbidden => Forbid(),
+        _ => NotFound(),
+    };
 
     [HttpGet]
     public async Task<IActionResult> List(
@@ -39,7 +51,8 @@ public class StationsController : ControllerBase
     public async Task<IActionResult> Nearby([FromQuery] double lat, [FromQuery] double lng,
                                             [FromQuery] double radiusKm = 10, CancellationToken ct = default)
         => Ok(await _stations.GetNearbyAsync(lat, lng, radiusKm, ct));
-
+    
+    [Authorize]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateStationRequest req, CancellationToken ct)
     {
@@ -47,10 +60,11 @@ public class StationsController : ControllerBase
         if (!validation.IsValid)
             return BadRequest(validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }));
 
-        var id = await _stations.CreateAsync(req, ct);
+        var id = await _stations.CreateAsync(req, User.GetUserId(), ct);
         return CreatedAtAction(nameof(GetById), new { id }, new { id });
     }
 
+    [Authorize]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] CreateStationRequest req, CancellationToken ct)
     {
@@ -58,24 +72,20 @@ public class StationsController : ControllerBase
         if (!validation.IsValid)
             return BadRequest(validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }));
 
-        var success = await _stations.UpdateAsync(id, req, ct);
-        return success ? NoContent() : NotFound();
+        return ToActionResult(await _stations.UpdateAsync(id, req, User.GetUserId(), ct));
     }
 
-    [HttpPost("{id:guid}/verify")]
-    public async Task<IActionResult> Verify(Guid id, CancellationToken ct)
-    {
-        var success = await _stations.VerifyAsync(id, ct);
-        return success ? NoContent() : NotFound();
-    }
-
+    [Authorize]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
-    {
-        var success = await _stations.DeleteAsync(id, ct);
-        return success ? NoContent() : NotFound();
-    }
+        => ToActionResult(await _stations.DeleteAsync(id, User.GetUserId(), ct));
 
+    [Authorize]
+    [HttpPost("{id:guid}/verify")]
+    public async Task<IActionResult> Verify(Guid id, CancellationToken ct)
+        => ToActionResult(await _stations.VerifyAsync(id, User.GetUserId(), ct));
+
+    [Authorize]
     [HttpPost("{id:guid}/checkin")]
     public async Task<IActionResult> Checkin(Guid id, [FromBody] CheckinRequest req, CancellationToken ct)
     {
@@ -83,7 +93,7 @@ public class StationsController : ControllerBase
         if (!validation.IsValid)
             return BadRequest(validation.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }));
 
-        var success = await _stations.AddCheckinAsync(id, req, ct);
+        var success = await _stations.AddCheckinAsync(id, req, User.GetUserId(), ct);
         return success ? Created() : NotFound();
     }
 

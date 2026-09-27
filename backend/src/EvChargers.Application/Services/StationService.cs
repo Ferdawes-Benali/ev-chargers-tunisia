@@ -11,7 +11,15 @@ namespace EvChargers.Application.Services;
 public class StationService : IStationService
 {
     private readonly IStationRepository _stations;
-    public StationService(IStationRepository stations) => _stations = stations;
+    private readonly IUserRepository _users;
+    private readonly IAuditLogRepository _auditLog;
+
+    public StationService(IStationRepository stations, IUserRepository users, IAuditLogRepository auditLog)
+    {
+        _stations = stations;
+        _users = users;
+        _auditLog = auditLog;
+    }
 
     public async Task<PagedResult<StationListItemDto>> GetPagedAsync(int page, int size, string? connectorType, int? minPowerKw, CancellationToken ct)
     {
@@ -32,7 +40,7 @@ public class StationService : IStationService
         return list.Select(s => s.ToListItemDto()).ToList();
     }
 
-    public async Task<Guid> CreateAsync(CreateStationRequest req, CancellationToken ct)
+    public async Task<Guid> CreateAsync(CreateStationRequest req, Guid userId, CancellationToken ct)
     {
         var station = new Station
         {
@@ -42,6 +50,7 @@ public class StationService : IStationService
             Location = new Point(req.Lng, req.Lat) { SRID = 4326 },
             OperatorId = req.OperatorId,
             Status = StationStatus.Pending,
+            SubmittedBy = userId,
             Connectors = req.Connectors.Select(c => new Connector
             {
                 Id = Guid.NewGuid(),
@@ -54,10 +63,14 @@ public class StationService : IStationService
         return station.Id;
     }
 
-    public async Task<bool> UpdateAsync(Guid id, CreateStationRequest req, CancellationToken ct)
+    public async Task<OperationResult> UpdateAsync(Guid id, CreateStationRequest req, Guid userId, CancellationToken ct)
     {
         var station = await _stations.GetByIdAsync(id, ct);
-        if (station is null) return false;
+        if (station is null) return OperationResult.NotFound;
+
+        // Only the submitter or an admin may edit. Stations without a submitter are admin-only.
+        if (station.SubmittedBy != userId && !await IsAdminAsync(userId, ct))
+            return OperationResult.Forbidden;
 
         station.Name = req.Name;
         station.Address = req.Address;
@@ -65,65 +78,96 @@ public class StationService : IStationService
         station.OperatorId = req.OperatorId;
 
         await _stations.UpdateAsync(station, ct);
-        return true;
+        return OperationResult.Ok;
     }
 
-    public async Task<bool> VerifyAsync(Guid id, CancellationToken ct)
+    public async Task<OperationResult> VerifyAsync(Guid id, Guid userId, CancellationToken ct)
     {
+        // Admin check first, so non-admins can't probe which station ids exist
+        if (!await IsAdminAsync(userId, ct)) return OperationResult.Forbidden;
+
         var station = await _stations.GetByIdAsync(id, ct);
-        if (station is null) return false;
+        if (station is null) return OperationResult.NotFound;
 
         station.Status = StationStatus.Verified;
         await _stations.UpdateAsync(station, ct);
-        return true;
+        await LogAdminActionAsync(userId, "VerifyStation", id, ct);
+        return OperationResult.Ok;
     }
 
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
+    public async Task<OperationResult> DeleteAsync(Guid id, Guid userId, CancellationToken ct)
     {
+        if (!await IsAdminAsync(userId, ct)) return OperationResult.Forbidden;
+
         var station = await _stations.GetByIdAsync(id, ct);
-        if (station is null) return false;
+        if (station is null) return OperationResult.NotFound;
 
         await _stations.DeleteAsync(id, ct);
-        return true;
+        await LogAdminActionAsync(userId, "DeleteStation", id, ct);
+        return OperationResult.Ok;
     }
 
-    
     public async Task<List<ReviewDto>?> GetReviewsAsync(Guid stationId, CancellationToken ct)
     {
         var station = await _stations.GetByIdAsync(stationId, ct);
         return station?.Reviews.Select(r => new ReviewDto(r.Id, r.Rating, r.Comment, r.CreatedAt)).ToList();
     }
 
-    public async Task<bool> AddReviewAsync(Guid stationId, CreateReviewRequest req, CancellationToken ct)
-{
-    var station = await _stations.GetByIdAsync(stationId, ct);
-    if (station is null) return false;
-
-    var review = new Review
+    public async Task<ReviewUpsertResult> AddReviewAsync(Guid stationId, CreateReviewRequest req, Guid userId, CancellationToken ct)
     {
-        Id = Guid.NewGuid(),
-        StationId = stationId,
-        Rating = req.Rating,
-        Comment = req.Comment
-    };
-    await _stations.AddReviewAsync(review, ct);
-    return true;
-}
+        var station = await _stations.GetByIdAsync(stationId, ct);
+        if (station is null) return ReviewUpsertResult.StationNotFound;
 
-public async Task<bool> AddCheckinAsync(Guid stationId, CheckinRequest req, CancellationToken ct)
-{
-    var station = await _stations.GetByIdAsync(stationId, ct);
-    if (station is null) return false;
+        // One review per user per station: a second review replaces the first
+        var existing = station.Reviews.FirstOrDefault(r => r.UserId == userId);
+        if (existing is not null)
+        {
+            existing.Rating = req.Rating;
+            existing.Comment = req.Comment;
+            existing.CreatedAt = DateTime.UtcNow;
+            await _stations.UpdateReviewAsync(existing, ct);
+            return ReviewUpsertResult.Updated;
+        }
 
-    var checkin = new AvailabilityCheckin
+        var review = new Review
+        {
+            Id = Guid.NewGuid(),
+            StationId = stationId,
+            UserId = userId,
+            Rating = req.Rating,
+            Comment = req.Comment
+        };
+        await _stations.AddReviewAsync(review, ct);
+        return ReviewUpsertResult.Created;
+    }
+
+    public async Task<bool> AddCheckinAsync(Guid stationId, CheckinRequest req, Guid userId, CancellationToken ct)
     {
-        Id = Guid.NewGuid(),
-        StationId = stationId,
-        State = Enum.Parse<CheckinState>(req.State, ignoreCase: true)
-    };
-    await _stations.AddCheckinAsync(checkin, ct);
-    return true;
-}
+        var station = await _stations.GetByIdAsync(stationId, ct);
+        if (station is null) return false;
+
+        var checkin = new AvailabilityCheckin
+        {
+            Id = Guid.NewGuid(),
+            StationId = stationId,
+            UserId = userId,
+            State = Enum.Parse<CheckinState>(req.State, ignoreCase: true)
+        };
+        await _stations.AddCheckinAsync(checkin, ct);
+        return true;
+    }
+
+    private async Task<bool> IsAdminAsync(Guid userId, CancellationToken ct) =>
+        (await _users.GetByIdAsync(userId, ct))?.IsAdmin == true;
+
+    private Task LogAdminActionAsync(Guid userId, string action, Guid targetId, CancellationToken ct) =>
+        _auditLog.LogAsync(new AuditLog
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Action = action,
+            TargetId = targetId
+        }, ct);
 
     public async Task<List<StationListItemDto>> GetByBoundingBoxAsync(double south, double west, double north, double east, CancellationToken ct)
     {

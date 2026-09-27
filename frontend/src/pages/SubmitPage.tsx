@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import axios from "axios";
 import LocationPicker from "@/components/LocationPicker";
 const CONNECTOR_TYPES = ["Type2", "CCS", "CHAdeMO", "Tesla"] as const;
 
@@ -97,7 +98,11 @@ export default function SubmitPage() {
         </Button>
 
         {mutation.isError && (
-          <p className="text-sm text-destructive">Something went wrong. Please try again.</p>
+          <p className="text-sm text-destructive">
+            {axios.isAxiosError(mutation.error) && mutation.error.response?.status === 401
+              ? "Please log in to submit a station."
+              : "Something went wrong. Please try again."}
+          </p>
         )}
         {mutation.isSuccess && (
           <p className="text-sm text-green-600">Station submitted!</p>

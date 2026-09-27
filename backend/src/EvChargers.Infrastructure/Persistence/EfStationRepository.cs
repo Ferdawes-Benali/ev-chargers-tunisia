@@ -30,6 +30,12 @@ public class EfStationRepository : IStationRepository
         await _db.SaveChangesAsync(ct);
     }
 
+    public async Task UpdateReviewAsync(Review review, CancellationToken ct)
+    {
+        _db.Reviews.Update(review);
+        await _db.SaveChangesAsync(ct);
+    }
+
     public async Task AddCheckinAsync(AvailabilityCheckin checkin, CancellationToken ct)
     {
         _db.Checkins.Add(checkin);
@@ -77,6 +83,19 @@ public class EfStationRepository : IStationRepository
             .Include(s => s.Reviews)
             .Where(s => s.Status == StationStatus.Verified
                     && s.Location.IsWithinDistance(origin, radiusKm * 1000))
+            .ToListAsync(ct);
+    }
+
+    public async Task<List<Station>> GetNearRouteAsync(IReadOnlyList<(double Lat, double Lng)> routePoints, double bufferKm, CancellationToken ct)
+    {
+        if (routePoints.Count < 2) return [];
+
+        // X = longitude, Y = latitude. Against the geography column this becomes ST_DWithin in meters.
+        var line = new LineString(routePoints.Select(p => new Coordinate(p.Lng, p.Lat)).ToArray()) { SRID = 4326 };
+        return await _db.Stations
+            .Include(s => s.Reviews)
+            .Where(s => s.Status == StationStatus.Verified
+                    && s.Location.IsWithinDistance(line, bufferKm * 1000))
             .ToListAsync(ct);
     }
 

@@ -13,7 +13,8 @@ public class AppDbContext : DbContext
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<AvailabilityCheckin> Checkins => Set<AvailabilityCheckin>();
     public DbSet<Vehicle> Vehicles => Set<Vehicle>();
-
+    public DbSet<AppUser> AppUsers => Set<AppUser>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     protected override void OnModelCreating(ModelBuilder b)
     {
         b.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
