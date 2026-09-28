@@ -28,4 +28,20 @@ public class CreateReviewRequestValidatorTests
         var result = _validator.Validate(new CreateReviewRequest(rating, "test"));
         result.IsValid.Should().BeTrue();
     }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(1000)]
+    public void Comment_is_optional_up_to_1000_characters(object? comment)
+    {
+        var text = comment is int length ? new string('a', length) : (string?)comment;
+        _validator.Validate(new CreateReviewRequest(4, text)).IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Comment_over_1000_characters_is_rejected()
+    {
+        _validator.Validate(new CreateReviewRequest(4, new string('a', 1001))).IsValid.Should().BeFalse();
+    }
 }

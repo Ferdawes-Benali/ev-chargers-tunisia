@@ -11,6 +11,7 @@ import iconRetina from "leaflet/dist/images/marker-icon-2x.png?url";
 import iconShadow from "leaflet/dist/images/marker-shadow.png?url";
 import { useStationsBbox } from "@/hooks/useStationsBbox";
 import { useReachEstimate, useTripPlan } from "@/hooks/useReach";
+import { useCompanion } from "@/hooks/useCompanion";
 import ReachPanel, { type ReachInputs } from "@/components/ReachPanel";
 import { Button } from "@/components/ui/button";
 import { BATTERY_COLORS, batteryColor } from "@/lib/battery";
@@ -85,6 +86,14 @@ function describeError(error: unknown): string {
   return "Couldn't check your range. Check your connection and try again.";
 }
 
+/** Fetched only once the stop's popup has been opened. */
+function CompanionHint({ stationId, enabled }: { stationId: string; enabled: boolean }) {
+  const { data } = useCompanion(stationId, enabled);
+  const count = data?.places.length ?? 0;
+  if (count === 0) return null;
+  return <p className="text-sm">☕ {count} {count === 1 ? "place" : "places"} nearby while you charge</p>;
+}
+
 function BoundsWatcher({ onBoundsChange }: { onBoundsChange: (bbox: BoundingBox) => void }) {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toBbox = (b: L.LatLngBounds) => ({ south: b.getSouth(), west: b.getWest(), north: b.getNorth(), east: b.getEast() });
@@ -133,6 +142,7 @@ export default function MapView() {
   // Last successful results: kept while a recalculation runs so the map doesn't flicker
   const [reachResult, setReachResult] = useState<ReachEstimateResult | undefined>();
   const [tripResult, setTripResult] = useState<TripPlanResult | undefined>();
+  const [openedStopId, setOpenedStopId] = useState<string | null>(null);
 
   const handleBoundsChange = useCallback((b: BoundingBox) => setBbox(b), []);
   const handleLocate = useCallback((lat: number, lng: number) => setUserPos([lat, lng]), []);
@@ -252,12 +262,17 @@ export default function MapView() {
                 icon={recommendedStopIcon}
                 zIndexOffset={2000}
                 title={`Recommended charging stop: ${tripResult.recommendedStop.name}`}
+                eventHandlers={{ popupopen: () => setOpenedStopId(tripResult.recommendedStop!.stationId) }}
               >
                 <Popup>
                   <div className="space-y-1">
                     <strong>{tripResult.recommendedStop.name}</strong>
                     <p className="text-sm">km {Math.round(tripResult.recommendedStop.distanceAlongKm)} of your trip</p>
                     <p className="text-sm">You'll arrive with about {Math.round(tripResult.recommendedStop.batteryOnArrivalPercent)}%</p>
+                    <CompanionHint
+                      stationId={tripResult.recommendedStop.stationId}
+                      enabled={openedStopId === tripResult.recommendedStop.stationId}
+                    />
                     <Link to={`/stations/${tripResult.recommendedStop.stationId}`} className="text-sm underline">View details →</Link>
                   </div>
                 </Popup>

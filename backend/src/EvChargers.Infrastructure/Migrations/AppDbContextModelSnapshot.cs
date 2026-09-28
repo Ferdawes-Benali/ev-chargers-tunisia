@@ -40,12 +40,23 @@ namespace EvChargers.Infrastructure.Migrations
                     b.Property<string>("DisplayName")
                         .HasColumnType("text");
 
+                    b.Property<string>("Email")
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)");
+
                     b.PrimitiveCollection<List<Guid>>("FavoriteStationIds")
                         .IsRequired()
                         .HasColumnType("uuid[]");
 
                     b.Property<bool>("IsAdmin")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("PreferredLanguage")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)")
+                        .HasDefaultValue("fr");
 
                     b.HasKey("Id");
 

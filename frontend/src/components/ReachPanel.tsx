@@ -15,14 +15,12 @@ export interface ReachInputs {
 }
 
 interface ReachPanelProps {
-  /** fresh = the user pressed the button, so the start point may be picked again */
   onEstimate: (inputs: ReachInputs, options: { fresh: boolean }) => void;
   reachResult: ReachEstimateResult | undefined;
   tripResult: TripPlanResult | undefined;
   isPending: boolean;
   error: string | null;
   originLabel: string;
-  /** Changes when the start point changes, to recalculate */
   originKey: string;
   destination: PlaceSuggestion | null;
   onDestinationChange: (place: PlaceSuggestion | null) => void;
@@ -39,7 +37,6 @@ const TONE_STYLES: Record<Tone, string> = {
   neutral: "border-sky-200 bg-sky-50 text-sky-950",
 };
 
-/** Turns raw numbers into the one thing the driver needs: a decision. */
 function getVerdict(rangeKm: number, trip: TripPlanResult | undefined, reserve: number): { tone: Tone; title: string; detail: string } {
   const km = Math.round(rangeKm);
 
@@ -85,7 +82,6 @@ function formatDuration(minutes: number) {
   return m === 0 ? `${h} h` : `${h} h ${m} min`;
 }
 
-/** Distance, time and the conditions detected automatically for the trip. */
 function TripFacts({ trip }: { trip: TripPlanResult }) {
   const facts = [
     { icon: Route, text: `${Math.round(trip.distanceKm)} km` },

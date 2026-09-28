@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -23,6 +23,13 @@ public static class InfrastructureServiceExtensions
         services.AddHttpClient<Application.Interfaces.IGeocodingProvider, External.OrsGeocodingProvider>();
         services.AddHttpClient<Application.Interfaces.IRoutingProvider, External.OrsDirectionsProvider>();
         services.AddHttpClient<Application.Interfaces.IWeatherProvider, External.OpenMeteoWeatherProvider>();
+        services.AddHttpClient<Application.Interfaces.IPlacesProvider, External.OverpassPlacesProvider>();
+
+        // Email: one shared queue (singleton), the Resend client, and the background worker
+        services.AddSingleton<Email.ChannelEmailQueue>();
+        services.AddSingleton<Application.Email.IEmailQueue>(sp => sp.GetRequiredService<Email.ChannelEmailQueue>());
+        services.AddHttpClient<Application.Email.IEmailSender, Email.ResendEmailSender>();
+        services.AddHostedService<Email.EmailDispatcher>();
 
         return services;
     }
