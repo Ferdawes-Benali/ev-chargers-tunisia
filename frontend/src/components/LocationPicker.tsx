@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -29,36 +30,41 @@ function ClickHandler({ onPick, setMarker }: LocationPickerProps & { setMarker: 
 }
 
 export default function LocationPicker({ onPick }: LocationPickerProps) {
+  const { t } = useTranslation();
   const [marker, setMarker] = useState<[number, number] | null>(null);
 
   return (
     <div className="rounded-md overflow-hidden border">
-      <MapContainer
-        center={[34.0, 9.0]}
-        zoom={6}
-        style={{ height: "250px", width: "100%" }}
-      >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        />
-        <ClickHandler onPick={onPick} setMarker={setMarker} />
-        {marker && (
-          <Marker
-            position={marker}
-            draggable
-            eventHandlers={{
-              dragend: (e) => {
-                const pos = e.target.getLatLng();
-                setMarker([pos.lat, pos.lng]);
-                onPick(pos.lat, pos.lng);
-              },
-            }}
+      {/* Maps stay left-to-right in every language */}
+      <div dir="ltr">
+        <MapContainer
+          center={[34.0, 9.0]}
+          zoom={6}
+          style={{ height: "250px", width: "100%" }}
+        >
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
-        )}
-      </MapContainer>
+          <ClickHandler onPick={onPick} setMarker={setMarker} />
+          {marker && (
+            <Marker
+              position={marker}
+              alt={t("submit.markerAlt")}
+              draggable
+              eventHandlers={{
+                dragend: (e) => {
+                  const pos = e.target.getLatLng();
+                  setMarker([pos.lat, pos.lng]);
+                  onPick(pos.lat, pos.lng);
+                },
+              }}
+            />
+          )}
+        </MapContainer>
+      </div>
       <p className="text-xs text-muted-foreground p-2">
-        Click the map to set the station location, or drag the marker to adjust.
+        {t("submit.locationHint")}
       </p>
     </div>
   );

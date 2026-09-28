@@ -9,6 +9,7 @@ import {
   UtensilsCrossed,
   type LucideIcon,
 } from "lucide-react";
+import type { TFunction } from "i18next";
 import type { CompanionPlace, PlaceCategory, PlaceGroup, WalkBand } from "@/types/companion";
 
 export const CATEGORIES: Record<PlaceCategory, { icon: LucideIcon; color: string }> = {
@@ -22,29 +23,25 @@ export const CATEGORIES: Record<PlaceCategory, { icon: LucideIcon; color: string
   atm: { icon: Banknote, color: "#ca8a04" },
 };
 
-export const GROUPS: { group: PlaceGroup; label: string; icon: LucideIcon }[] = [
-  { group: "eat", label: "Eat & drink", icon: UtensilsCrossed },
-  { group: "pray", label: "Pray", icon: MoonStar },
-  { group: "essentials", label: "Essentials", icon: Pill },
-  { group: "relax", label: "Relax", icon: Trees },
-  { group: "shop", label: "Shop", icon: ShoppingBag },
+/** Chip order; labels are translated from "companion.groups.<group>". */
+export const GROUPS: { group: PlaceGroup; icon: LucideIcon }[] = [
+  { group: "eat", icon: UtensilsCrossed },
+  { group: "pray", icon: MoonStar },
+  { group: "essentials", icon: Pill },
+  { group: "relax", icon: Trees },
+  { group: "shop", icon: ShoppingBag },
 ];
 
-export const BANDS: { band: WalkBand; label: string }[] = [
-  { band: "≤2 min", label: "Within 2 min walk" },
-  { band: "≤5 min", label: "Within 5 min walk" },
-  { band: "≤10 min", label: "Within 10 min walk" },
-  { band: "≤15 min", label: "Within 15 min walk" },
-  { band: "farther", label: "A bit farther" },
-];
+/** List order; labels are translated from "companion.bands.<band>". */
+export const BANDS: WalkBand[] = ["min2", "min5", "min10", "min15", "far"];
 
-/** "Open · closes 22:00", "Closed · opens 08:00"… null when hours are unknown: we never guess. */
-export function openStatusText(place: Pick<CompanionPlace, "openStatus" | "closesAt" | "opensAt">): string | null {
+/** Formats opening status in the current language; returns null when opening hours are unknown. */
+export function openStatusText(place: Pick<CompanionPlace, "openStatus" | "closesAt" | "opensAt">, t: TFunction): string | null {
   switch (place.openStatus) {
     case "open":
-      return place.closesAt ? `Open · closes ${place.closesAt}` : "Open 24/7";
+      return place.closesAt ? t("companion.status.openUntil", { time: place.closesAt }) : t("companion.status.open247");
     case "closed":
-      return place.opensAt ? `Closed · opens ${place.opensAt}` : "Closed";
+      return place.opensAt ? t("companion.status.closedUntil", { time: place.opensAt }) : t("companion.status.closed");
     default:
       return null;
   }

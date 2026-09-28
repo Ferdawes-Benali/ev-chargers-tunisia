@@ -81,4 +81,15 @@ public class EfUserRepository : IUserRepository
             await _db.SaveChangesAsync(ct);
         }
     }
+
+    public async Task RemoveFavoritesAsync(Guid userId, IReadOnlyCollection<Guid> stationIds, CancellationToken ct)
+    {
+        if (stationIds.Count == 0) return;
+        var user = await _db.AppUsers.FindAsync([userId], ct);
+        if (user is null) return;
+        if (user.FavoriteStationIds.RemoveAll(stationIds.Contains) > 0)
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+    }
 }

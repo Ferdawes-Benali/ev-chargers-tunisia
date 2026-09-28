@@ -2,14 +2,11 @@ using EvChargers.Application.DTOs;
 
 namespace EvChargers.Application.Common;
 
-/// <summary>Pure logic of the Charging Companion: which nearby places fit in the charging time, and in what order.</summary>
 public static class Companion
 {
-    /// <summary>One-way walk used when we don't know how long charging takes.</summary>
     public const int DefaultOneWayMinutes = 15;
     public const int MaxPerCategory = 8;
     public const int MaxTotal = 40;
-    /// <summary>Include ATMs and banks in the default list to maintain category diversity.</summary>
     public const int MaxAtmsInDefaultList = 2;
     public const int MinRadiusMeters = 300;
     public const int MaxRadiusMeters = 1500;
@@ -18,7 +15,6 @@ public static class Companion
     private static readonly TimeOnly LunchStart = new(11, 30), LunchEnd = new(14, 30);
     private static readonly TimeOnly DinnerStart = new(18, 30), DinnerEnd = new(22, 0);
 
-    /// <summary>There and back while charging: half the charge time each way.</summary>
     public static int OneWayBudgetMinutes(int? chargeMinutes) =>
         chargeMinutes is { } minutes ? minutes / 2 : DefaultOneWayMinutes;
 
@@ -28,24 +24,21 @@ public static class Companion
         return (int)Math.Clamp(Math.Round(radius), MinRadiusMeters, MaxRadiusMeters);
     }
 
+    /// <summary>Walking band code; the frontend shows the translated label.</summary>
     public static string Band(int walkMinutes) => walkMinutes switch
     {
-        <= 2 => "≤2 min",
-        <= 5 => "≤5 min",
-        <= 10 => "≤10 min",
-        <= 15 => "≤15 min",
-        _ => "farther",
+        <= 2 => WalkBands.Min2,
+        <= 5 => WalkBands.Min5,
+        <= 10 => WalkBands.Min10,
+        <= 15 => WalkBands.Min15,
+        _ => WalkBands.Far,
     };
 
     /// <summary>"HH:mm" local time when the car should be ready.</summary>
     public static string? BackBy(DateTime localNow, int? chargeMinutes) =>
         chargeMinutes is { } minutes ? localNow.AddMinutes(minutes).ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture) : null;
 
-    /// <summary>
-    /// Keeps places whose round trip fits the charge (15 min one way without a charge time), then ranks:
-    /// named first, then open, unknown, closed (closed stay, last), then walking time.
-    /// </summary>
-    public static List<CompanionPlaceDto> Build(double stationLat, double stationLng, IEnumerable<RawPlace> places,
+        public static List<CompanionPlaceDto> Build(double stationLat, double stationLng, IEnumerable<RawPlace> places,
                                                 int? chargeMinutes, DateTime localNow)
     {
         var ranked = places
@@ -94,27 +87,24 @@ public static class Companion
             .FirstOrDefault();
 
         var picks = new List<CompanionPickDto>();
-        void Add(string label, CompanionPlaceDto? place)
+        void Add(string kind, CompanionPlaceDto? place)
         {
-            if (place is not null && picks.Count < MaxPicks) picks.Add(new CompanionPickDto(label, place.Id, Reason(place)));
+            if (place is not null && picks.Count < MaxPicks) picks.Add(new CompanionPickDto(kind, place.Id, place.WalkMinutes));
         }
 
-        Add("Quick coffee", Nearest(PlaceCategories.Cafe));
+        Add(PickKinds.Coffee, Nearest(PlaceCategories.Cafe));
 
         var time = TimeOnly.FromDateTime(localNow);
-        var meal = time.IsBetween(LunchStart, LunchEnd.AddMinutes(1)) ? "Lunch"
-                 : time.IsBetween(DinnerStart, DinnerEnd.AddMinutes(1)) ? "Dinner"
+        var meal = time.IsBetween(LunchStart, LunchEnd.AddMinutes(1)) ? PickKinds.Lunch
+                 : time.IsBetween(DinnerStart, DinnerEnd.AddMinutes(1)) ? PickKinds.Dinner
                  : null;
         if (meal is not null) Add(meal, Nearest(PlaceCategories.Restaurant));
 
-        Add("Pray", Nearest(PlaceCategories.Mosque));
+        Add(PickKinds.Pray, Nearest(PlaceCategories.Mosque));
 
-        if (picks.Count < MaxPicks) Add("Take a walk", Nearest(PlaceCategories.Park));
+        if (picks.Count < MaxPicks) Add(PickKinds.Walk, Nearest(PlaceCategories.Park));
         return picks;
     }
-
-    private static string Reason(CompanionPlaceDto place) =>
-        place.ClosesAt is { } closes ? $"{place.WalkMinutes} min walk · open until {closes}" : $"{place.WalkMinutes} min walk";
 
     private static int StatusRank(string status) => status switch
     {

@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import { MapContainer, TileLayer, CircleMarker, Polyline, Tooltip, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { PLACE_NAME_LANGUAGE, pickPlaceName } from "@/lib/placeName";
+import { pickPlaceName } from "@/lib/placeName";
+import { useLocale } from "@/lib/format";
 import type { CompanionPlace, WalkingRoute } from "@/types/companion";
 import type { StationDetail } from "@/types/station";
 import { CATEGORIES } from "./meta";
@@ -16,11 +17,14 @@ interface CompanionMapProps {
 }
 
 export default function CompanionMap({ station, places, selected, route, onSelect }: CompanionMapProps) {
+  const { lang, isRtl } = useLocale();
+  const textDir = isRtl ? "rtl" : "ltr";
   // The selected place stays on the map even if a filter hides it from the list
   const shown = selected && !places.some((p) => p.id === selected.id) ? [...places, selected] : places;
 
   return (
-    <div className="overflow-hidden rounded-md border">
+    // Maps stay left-to-right in every language; tooltip text follows the page direction
+    <div dir="ltr" className="overflow-hidden rounded-md border">
       <MapContainer center={[station.lat, station.lng]} zoom={16} style={{ height: "250px", width: "100%" }}>
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -49,7 +53,7 @@ export default function CompanionMap({ station, places, selected, route, onSelec
               }}
               eventHandlers={{ click: () => onSelect(place.id) }}
             >
-              <Tooltip>{pickPlaceName(place, PLACE_NAME_LANGUAGE)}</Tooltip>
+              <Tooltip><span dir={textDir}>{pickPlaceName(place, lang)}</span></Tooltip>
             </CircleMarker>
           );
         })}
@@ -58,7 +62,7 @@ export default function CompanionMap({ station, places, selected, route, onSelec
           radius={8}
           pathOptions={{ color: "#ffffff", weight: 2, fillColor: "#0e9d9f", fillOpacity: 1 }}
         >
-          <Tooltip>{station.name}</Tooltip>
+          <Tooltip><span dir="auto">{station.name}</span></Tooltip>
         </CircleMarker>
       </MapContainer>
     </div>

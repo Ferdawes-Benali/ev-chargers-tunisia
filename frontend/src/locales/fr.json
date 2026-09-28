@@ -1,0 +1,285 @@
+{
+  "nav": {
+    "main": "Navigation principale",
+    "map": "Carte",
+    "list": "Liste",
+    "submit": "Ajouter une borne",
+    "profile": "Profil",
+    "language": "Langue"
+  },
+  "auth": {
+    "title": "Connexion",
+    "logIn": "Se connecter",
+    "logOut": "Se déconnecter",
+    "google": "Continuer avec Google",
+    "github": "Continuer avec GitHub"
+  },
+  "common": {
+    "loading": "Chargement…",
+    "close": "Fermer",
+    "viewDetails": "Voir les détails",
+    "noReviews": "Pas encore d'avis",
+    "ratingShort": "Note de {{rating}} sur 5",
+    "status": {
+      "Pending": "En attente",
+      "Verified": "Vérifiée",
+      "Rejected": "Refusée"
+    }
+  },
+  "errors": {
+    "generic": "Une erreur s'est produite. Veuillez réessayer.",
+    "loginAgain": "Veuillez vous reconnecter.",
+    "noRoute": "Impossible de calculer un itinéraire routier vers ce lieu pour le moment. Réessayez dans un instant ou choisissez une ville proche.",
+    "carGone": "Ce véhicule n'est plus disponible. Choisissez-en un autre.",
+    "rangeFailed": "Impossible de vérifier votre autonomie. Vérifiez votre connexion et réessayez."
+  },
+  "list": {
+    "title": "Bornes de recharge",
+    "loadError": "Impossible de charger les bornes. Veuillez réessayer.",
+    "empty": "Aucune borne ne correspond à vos filtres.",
+    "addFavorite": "Ajouter {{name}} aux favoris",
+    "removeFavorite": "Retirer {{name}} des favoris",
+    "filters": {
+      "connector": "Type de prise",
+      "allConnectors": "Toutes les prises",
+      "minPower": "Puissance minimale",
+      "anyPower": "Toute puissance",
+      "powerAtLeast": "{{power}} kW et plus"
+    }
+  },
+  "map": {
+    "locateMe": "Me localiser",
+    "checkRange": "Vérifier mon autonomie",
+    "lowBattery": "Votre batterie atteint sa réserve ici",
+    "recommendedStop": "Arrêt recharge conseillé : {{name}}",
+    "kmIntoTrip": "Au km {{km}} de votre trajet",
+    "arriveWith": "Vous arriverez avec environ {{percent}} %",
+    "companionHint_one": "{{count}} lieu à proximité pendant la recharge",
+    "companionHint_many": "{{count}} lieux à proximité pendant la recharge",
+    "companionHint_other": "{{count}} lieux à proximité pendant la recharge",
+    "startPoint": "Point de départ",
+    "youAreHere": "Vous êtes ici",
+    "onYourWay": "Sur votre trajet",
+    "withinReach": "À votre portée"
+  },
+  "reach": {
+    "panel": "Vérifier mon autonomie",
+    "title": "Vais-je y arriver ?",
+    "yourCar": "Votre véhicule",
+    "loadingCars": "Chargement des véhicules…",
+    "chooseCar": "Choisissez votre véhicule",
+    "battery": "Batterie",
+    "from": "Départ",
+    "to": "Arrivée (facultatif)",
+    "destination": "Destination",
+    "yourLocation": "Votre position",
+    "mapCenter": "Centre de la carte",
+    "locateHint": "Touchez « Me localiser » pour un départ précis.",
+    "checkTrip": "Vérifier le trajet",
+    "checkRange": "Vérifier l'autonomie",
+    "checking": "Vérification…",
+    "chooseCarFirst": "Choisissez votre véhicule pour commencer.",
+    "search": {
+      "placeholder": "Rechercher une ville ou un lieu",
+      "clear": "Effacer la destination",
+      "searching": "Recherche…",
+      "error": "Impossible de rechercher des lieux. Vérifiez votre connexion et réessayez.",
+      "none": "Aucun lieu trouvé en Tunisie",
+      "found_one": "{{count}} lieu trouvé",
+      "found_many": "{{count}} lieux trouvés",
+      "found_other": "{{count}} lieux trouvés"
+    }
+  },
+  "trip": {
+    "verdict": {
+      "chargeNowTitle": "Rechargez maintenant",
+      "chargeNowDetail": "Votre batterie est au niveau de réserve. Trouvez une borne avant d'aller plus loin.",
+      "chargeOnWayTitle": "Rechargez en route",
+      "stopAt": "Arrêtez-vous à {{name}}, à {{km}} km de votre départ. Vous y arriverez avec environ {{percent}} %.",
+      "shortNoCharger": "Il vous manquerait environ {{km}} km, et aucune borne connue ne se trouve sur ce trajet avant que votre batterie ne soit faible.",
+      "tightTitle": "C'est juste, mais ça passe",
+      "tightDetail": "Vous arriveriez avec environ {{percent}} %, juste au-dessus de votre réserve. Une courte recharge est plus sûre.",
+      "goodTitle": "Vous y arriverez",
+      "goodDetail": "Vous arriverez avec environ {{percent}} % de batterie.",
+      "lowTitle": "Plus qu'environ {{km}} km",
+      "lowDetail": "Rendez-vous à une borne dès maintenant.",
+      "rangeTitle": "Environ {{km}} km de route",
+      "rangeDetail": "Cherchez une destination pour vérifier un trajet précis."
+    },
+    "facts": {
+      "label": "Détails du trajet",
+      "distance": "{{km}} km",
+      "motorway": "Surtout autoroute",
+      "local": "Surtout routes locales",
+      "temperature": "{{value}} °C"
+    },
+    "duration": {
+      "minutes_one": "{{count}} min",
+      "minutes_many": "{{count}} min",
+      "minutes_other": "{{count}} min",
+      "hours_one": "{{count}} h",
+      "hours_many": "{{count}} h",
+      "hours_other": "{{count}} h"
+    },
+    "bar": {
+      "ariaNow": "Batterie à {{battery}} %, dont {{reserve}} % gardés en réserve",
+      "ariaTrip": "Départ avec {{battery}} %, arrivée avec {{arrival}} %, réserve de {{reserve}} %",
+      "reserve": "Réserve {{percent}} %",
+      "belowReserve": "Sous la réserve à l'arrivée",
+      "arriveWith": "Arrivée avec {{percent}} %",
+      "now": "Actuel {{percent}} %"
+    },
+    "stations": {
+      "noneAlong": "Aucune borne connue sur votre trajet.",
+      "alongAll_one": "{{count}} borne sur votre trajet, en vert sur la carte.",
+      "alongAll_many": "{{count}} bornes sur votre trajet, en vert sur la carte.",
+      "alongAll_other": "{{count}} bornes sur votre trajet, en vert sur la carte.",
+      "along_one": "{{count}} borne sur votre trajet.",
+      "along_many": "{{count}} bornes sur votre trajet.",
+      "along_other": "{{count}} bornes sur votre trajet.",
+      "beforeLow_one": "{{count}} avant que votre batterie ne soit faible, en vert sur la carte.",
+      "beforeLow_many": "{{count}} avant que votre batterie ne soit faible, en vert sur la carte.",
+      "beforeLow_other": "{{count}} avant que votre batterie ne soit faible, en vert sur la carte.",
+      "withinReach_one": "{{count}} borne à votre portée, en vert sur la carte.",
+      "withinReach_many": "{{count}} bornes à votre portée, en vert sur la carte.",
+      "withinReach_other": "{{count}} bornes à votre portée, en vert sur la carte.",
+      "noneInReach": "Aucune borne à votre portée depuis ce point.",
+      "fullRange": "Autonomie totale d'environ {{km}} km."
+    }
+  },
+  "companion": {
+    "title": "Pendant la recharge",
+    "chargeFor_one": "Environ {{count}} min de recharge — retour à <strong>{{time}}</strong>",
+    "chargeFor_many": "Environ {{count}} min de recharge — retour à <strong>{{time}}</strong>",
+    "chargeFor_other": "Environ {{count}} min de recharge — retour à <strong>{{time}}</strong>",
+    "chargerHint": "Borne de {{power}} kW, de 20 à 80 % pour une voiture type",
+    "shortWalk": "Lieux à quelques pas",
+    "loading": "Chargement des lieux à proximité",
+    "unavailable": "Les lieux à proximité sont indisponibles pour le moment.",
+    "empty": "Rien à distance de marche — l'occasion d'un café dans la voiture ☕",
+    "credit": "Lieux ©",
+    "creditLink": "contributeurs OpenStreetMap",
+    "filters": "Filtrer les lieux",
+    "all": "Tout",
+    "picks": "Suggestions pour votre attente",
+    "groups": {
+      "eat": "Manger et boire",
+      "pray": "Prier",
+      "essentials": "Essentiels",
+      "relax": "Se détendre",
+      "shop": "Courses"
+    },
+    "pickKind": {
+      "coffee": "Café rapide",
+      "lunch": "Déjeuner",
+      "dinner": "Dîner",
+      "pray": "Prière",
+      "walk": "Petite balade"
+    },
+    "bands": {
+      "min2": "À 2 min à pied",
+      "min5": "À 5 min à pied",
+      "min10": "À 10 min à pied",
+      "min15": "À 15 min à pied",
+      "far": "Un peu plus loin"
+    },
+    "walk_one": "{{count}} min à pied",
+    "walk_many": "{{count}} min à pied",
+    "walk_other": "{{count}} min à pied",
+    "aboutWalk_one": "Environ {{count}} min à pied",
+    "aboutWalk_many": "Environ {{count}} min à pied",
+    "aboutWalk_other": "Environ {{count}} min à pied",
+    "roundTrip_one": "{{count}} min aller-retour",
+    "roundTrip_many": "{{count}} min aller-retour",
+    "roundTrip_other": "{{count}} min aller-retour",
+    "meters": "{{value}} m",
+    "findingRoute": "(recherche de l'itinéraire à pied…)",
+    "budget": {
+      "there_one": "{{count}} min à l'aller",
+      "there_many": "{{count}} min à l'aller",
+      "there_other": "{{count}} min à l'aller",
+      "stay_one": "environ {{count}} min sur place",
+      "stay_many": "environ {{count}} min sur place",
+      "stay_other": "environ {{count}} min sur place",
+      "back_one": "{{count}} min au retour",
+      "back_many": "{{count}} min au retour",
+      "back_other": "{{count}} min au retour",
+      "tight": "Serré : vous reviendriez après la fin de la recharge"
+    },
+    "status": {
+      "openUntil": "Ouvert · ferme à {{time}}",
+      "open247": "Ouvert 24h/24, 7j/7",
+      "closedUntil": "Fermé · ouvre à {{time}}",
+      "closed": "Fermé"
+    },
+    "closeCard": "Fermer les détails du lieu",
+    "openInMaps": "Ouvrir dans Google Maps",
+    "openInMapsAria": "Ouvrir l'itinéraire à pied vers {{name}} dans Google Maps"
+  },
+  "detail": {
+    "loading": "Chargement de la borne",
+    "notFound": "Borne introuvable.",
+    "verify": "Vérifier la borne (admin)",
+    "verifying": "Vérification…",
+    "operator": "Opérateur : {{name}}",
+    "connectors": "Prises",
+    "noConnectors": "Pas encore d'information sur les prises.",
+    "connectorLine": "{{type}} — {{power}} kW × {{count}}",
+    "directions": "Itinéraire"
+  },
+  "reviews": {
+    "title": "Avis",
+    "count_one": "{{count}} avis",
+    "count_many": "{{count}} avis",
+    "count_other": "{{count}} avis",
+    "write": "Donner votre avis",
+    "edit": "Modifier votre avis",
+    "yourRating": "Votre note",
+    "comment": "Commentaire",
+    "optional": "(facultatif)",
+    "placeholder": "Comment s'est passée la recharge ? Attente, prises en service, accès…",
+    "submit": "Publier l'avis",
+    "update": "Mettre à jour l'avis",
+    "saving": "Enregistrement…",
+    "chooseRating": "Choisissez une note pour continuer.",
+    "created": "Merci ! Votre avis a été publié.",
+    "updated": "Votre avis a été mis à jour.",
+    "saveError": "Impossible d'enregistrer votre avis. Veuillez réessayer.",
+    "loadError": "Impossible de charger les avis.",
+    "empty": "Pas encore d'avis — soyez le premier à partager votre expérience.",
+    "loginToReview": "Connectez-vous pour donner votre avis",
+    "you": "Vous",
+    "stars_one": "{{count}} étoile",
+    "stars_many": "{{count}} étoiles",
+    "stars_other": "{{count}} étoiles",
+    "outOf": "{{rating}} étoiles sur 5"
+  },
+  "submit": {
+    "title": "Ajouter une borne",
+    "name": "Nom de la borne",
+    "address": "Adresse (facultatif)",
+    "connector": "Type de prise",
+    "power": "Puissance (kW)",
+    "submit": "Envoyer la borne",
+    "submitting": "Envoi…",
+    "success": "Borne envoyée !",
+    "loginRequired": "Connectez-vous pour ajouter une borne.",
+    "locationHint": "Cliquez sur la carte pour placer la borne, ou déplacez le marqueur pour ajuster.",
+    "markerAlt": "Emplacement de la borne",
+    "errors": {
+      "nameRequired": "Le nom est obligatoire",
+      "nameTooLong": "Le nom doit faire 120 caractères au maximum",
+      "locationRequired": "Cliquez sur la carte pour choisir un emplacement",
+      "connectorRequired": "Choisissez un type de prise",
+      "powerInvalid": "Indiquez la puissance en kW",
+      "powerPositive": "La puissance doit être supérieure à 0"
+    }
+  },
+  "profile": {
+    "title": "Profil",
+    "loading": "Chargement du profil…",
+    "favorites": "Favoris",
+    "noFavorites": "Pas encore de favoris — touchez le cœur d'une borne pour l'enregistrer ici.",
+    "loadError": "Impossible de charger vos favoris. Veuillez réessayer."
+  }
+}

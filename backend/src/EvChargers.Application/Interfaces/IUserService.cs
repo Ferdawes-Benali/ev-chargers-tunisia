@@ -14,4 +14,10 @@ public interface IUserService
 
     /// <summary>Returns false when the user does not exist. The language must already be validated.</summary>
     Task<bool> SetLanguageAsync(Guid userId, string language, CancellationToken ct);
+
+    /// <summary>
+    /// The user's favorite stations, in the order they were saved. Favorites whose station
+    /// no longer exists are skipped and removed from the user's list.
+    /// </summary>
+    Task<List<StationListItemDto>> GetFavoritesAsync(Guid userId, CancellationToken ct);
 }

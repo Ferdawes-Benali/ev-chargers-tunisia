@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
+using NetTopologySuite.Geometries;
 using EvChargers.Application.Email;
 using EvChargers.Application.Interfaces;
 using EvChargers.Application.Services;
@@ -14,12 +15,13 @@ public class UserServiceTests
     private static readonly Guid UserId = Guid.NewGuid();
 
     private readonly Mock<IUserRepository> _users = new();
+    private readonly Mock<IStationRepository> _stations = new();
     private readonly Mock<IEmailQueue> _emailQueue = new();
     private readonly UserService _service;
 
     public UserServiceTests()
     {
-        _service = new UserService(_users.Object, _emailQueue.Object, NullLogger<UserService>.Instance);
+        _service = new UserService(_users.Object, _stations.Object, _emailQueue.Object, NullLogger<UserService>.Instance);
     }
 
     private void GivenNoUserYet() =>
@@ -122,6 +124,7 @@ public class UserServiceTests
         profile.DisplayName.Should().Be("New");
         profile.IsAdmin.Should().BeTrue();
         profile.FavoriteStationIds.Should().Equal(favorite);
+        profile.PreferredLanguage.Should().Be("ar"); // the stored choice, not the "en" from Accept-Language
         _users.Verify(r => r.UpsertAsync(
             It.Is<AppUser>(u => u.Email == "new@example.com" && u.DisplayName == "New" && u.AvatarUrl == "https://img/new.png"
                                 && u.IsAdmin && u.PreferredLanguage == "ar"),
@@ -140,5 +143,69 @@ public class UserServiceTests
 
         stored.AvatarUrl.Should().Be("https://img/a.png");
         _users.Verify(r => r.UpsertAsync(It.IsAny<AppUser>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // --- Favorites ---
+
+    private static Station StationNamed(string name, params int[] ratings) => new()
+    {
+        Id = Guid.NewGuid(),
+        Name = name,
+        Location = new Point(10.18, 36.80) { SRID = 4326 },
+        Reviews = ratings.Select(r => new Review { Id = Guid.NewGuid(), Rating = r }).ToList(),
+    };
+
+    private void GivenFavorites(params Guid[] ids) =>
+        _users.Setup(r => r.GetByIdAsync(UserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AppUser { Id = UserId, FavoriteStationIds = [.. ids] });
+
+    [Fact]
+    public async Task Favorites_keep_the_order_the_user_saved_them_in()
+    {
+        var first = StationNamed("Sousse Centre", 4, 5);
+        var second = StationNamed("Tunis Lac");
+        var third = StationNamed("Sfax Port", 3);
+        GivenFavorites(first.Id, second.Id, third.Id);
+        // The database returns them in any order
+        _stations.Setup(r => r.GetByIdsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([third, first, second]);
+
+        var favorites = await _service.GetFavoritesAsync(UserId, CancellationToken.None);
+
+        favorites.Select(f => f.Name).Should().Equal("Sousse Centre", "Tunis Lac", "Sfax Port");
+        favorites[0].AvgRating.Should().Be(4.5);
+        favorites[1].AvgRating.Should().BeNull();
+        _stations.Verify(r => r.GetByIdsAsync(
+            It.Is<IReadOnlyCollection<Guid>>(ids => ids.SequenceEqual(new[] { first.Id, second.Id, third.Id })),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _users.Verify(r => r.RemoveFavoritesAsync(It.IsAny<Guid>(), It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Deleted_stations_are_skipped_and_removed_from_favorites()
+    {
+        var kept = StationNamed("Nabeul");
+        var deletedA = Guid.NewGuid();
+        var deletedB = Guid.NewGuid();
+        GivenFavorites(deletedA, kept.Id, deletedB);
+        _stations.Setup(r => r.GetByIdsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([kept]);
+
+        var favorites = await _service.GetFavoritesAsync(UserId, CancellationToken.None);
+
+        favorites.Should().ContainSingle(f => f.Id == kept.Id);
+        _users.Verify(r => r.RemoveFavoritesAsync(UserId,
+            It.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2 && ids.Contains(deletedA) && ids.Contains(deletedB)),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task No_favorites_or_unknown_user_gives_an_empty_list_without_a_station_query()
+    {
+        GivenFavorites();
+        (await _service.GetFavoritesAsync(UserId, CancellationToken.None)).Should().BeEmpty();
+        (await _service.GetFavoritesAsync(Guid.NewGuid(), CancellationToken.None)).Should().BeEmpty();
+
+        _stations.Verify(r => r.GetByIdsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

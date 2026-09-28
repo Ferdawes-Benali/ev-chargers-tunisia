@@ -11,7 +11,8 @@ export type PlaceCategory =
 /** What the driver wants to do; each category belongs to one group. */
 export type PlaceGroup = "eat" | "pray" | "essentials" | "relax" | "shop";
 
-export type WalkBand = "≤2 min" | "≤5 min" | "≤10 min" | "≤15 min" | "farther";
+/** Walking band codes; the UI translates them. */
+export type WalkBand = "min2" | "min5" | "min10" | "min15" | "far";
 
 export type OpenStatus = "open" | "closed" | "unknown";
 
@@ -43,10 +44,13 @@ export interface CompanionPlace {
   inDefaultList: boolean;
 }
 
+/** Smart pick codes; the UI translates them. */
+export type PickKind = "coffee" | "lunch" | "dinner" | "pray" | "walk";
+
 export interface CompanionPick {
-  label: string;
+  kind: PickKind;
   placeId: string;
-  reason: string;
+  walkMinutes: number;
 }
 
 export interface CompanionResult {
