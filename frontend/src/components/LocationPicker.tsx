@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import { MapContainer, Marker, useMapEvents } from "react-leaflet";
+import { MousePointerClick } from "lucide-react";
+import MapTiles from "@/components/MapTiles";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import icon from "leaflet/dist/images/marker-icon.png?url";
@@ -34,18 +36,15 @@ export default function LocationPicker({ onPick }: LocationPickerProps) {
   const [marker, setMarker] = useState<[number, number] | null>(null);
 
   return (
-    <div className="rounded-md overflow-hidden border">
+    <div className="isolate overflow-hidden rounded-xl border bg-card">
       {/* Maps stay left-to-right in every language */}
       <div dir="ltr">
         <MapContainer
           center={[34.0, 9.0]}
           zoom={6}
-          style={{ height: "250px", width: "100%" }}
+          style={{ height: "280px", width: "100%" }}
         >
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          />
+          <MapTiles />
           <ClickHandler onPick={onPick} setMarker={setMarker} />
           {marker && (
             <Marker
@@ -63,7 +62,8 @@ export default function LocationPicker({ onPick }: LocationPickerProps) {
           )}
         </MapContainer>
       </div>
-      <p className="text-xs text-muted-foreground p-2">
+      <p className="flex items-start gap-2 border-t bg-muted/50 px-3 py-2.5 text-xs text-muted-foreground">
+        <MousePointerClick aria-hidden="true" className="mt-px size-4 shrink-0" />
         {t("submit.locationHint")}
       </p>
     </div>

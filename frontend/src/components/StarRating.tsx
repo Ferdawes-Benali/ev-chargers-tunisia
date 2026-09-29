@@ -17,7 +17,7 @@ export function StarRatingDisplay({ rating, className }: { rating: number; class
         <Star
           key={n}
           aria-hidden="true"
-          className={cn("size-4", n <= filled ? "fill-amber-400 text-amber-400" : "text-muted-foreground/40")}
+          className={cn("size-4", n <= filled ? "fill-warning text-warning" : "text-muted-foreground/40")}
         />
       ))}
     </span>
@@ -66,7 +66,7 @@ export function StarRatingInput({ value, onChange, labelledBy }: StarRatingInput
             aria-hidden="true"
             className={cn(
               "size-7 transition-colors",
-              n <= shown ? "fill-amber-400 text-amber-400" : "text-muted-foreground/50",
+              n <= shown ? "fill-warning text-warning" : "text-muted-foreground/50",
             )}
           />
         </label>

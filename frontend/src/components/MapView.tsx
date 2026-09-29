@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import { MapContainer, TileLayer, Marker, Popup, CircleMarker, Polyline, ZoomControl, useMapEvents, useMap } from "react-leaflet";
+import { MapContainer, Marker, Popup, CircleMarker, Polyline, ZoomControl, useMapEvents, useMap } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -7,7 +7,7 @@ import type { TFunction } from "i18next";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import axios from "axios";
-import { ArrowRight, Zap } from "lucide-react";
+import { ArrowRight, LocateFixed, Zap } from "lucide-react";
 import icon from "leaflet/dist/images/marker-icon.png?url";
 import iconRetina from "leaflet/dist/images/marker-icon-2x.png?url";
 import iconShadow from "leaflet/dist/images/marker-shadow.png?url";
@@ -15,6 +15,7 @@ import { useStationsBbox } from "@/hooks/useStationsBbox";
 import { useReachEstimate, useTripPlan } from "@/hooks/useReach";
 import { useCompanion } from "@/hooks/useCompanion";
 import ReachPanel, { type ReachInputs } from "@/components/ReachPanel";
+import MapTiles from "@/components/MapTiles";
 import { Button } from "@/components/ui/button";
 import { BATTERY_COLORS, batteryColor } from "@/lib/battery";
 import { useLocale } from "@/lib/format";
@@ -34,7 +35,7 @@ const reachableIcon = new L.Icon({ ...baseIconOptions, className: "hue-rotate-[2
 const destinationIcon = new L.Icon({ ...baseIconOptions, className: "hue-rotate-[90deg]" });
 const lowBatteryIcon = L.divIcon({
   className: "",
-  html: `<div style="display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:${BATTERY_COLORS.critical};border:3px solid #fff;box-shadow:0 1px 4px rgba(15,23,42,.45);color:#fff;font:700 15px/1 system-ui,sans-serif">!</div>`,
+  html: `<div style="display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:${BATTERY_COLORS.critical};border:3px solid #fff;box-shadow:0 1px 4px rgba(15,23,42,.45);color:#0B1120;font:800 15px/1 system-ui,sans-serif">!</div>`,
   iconSize: [28, 28],
   iconAnchor: [14, 14],
   popupAnchor: [0, -14],
@@ -43,7 +44,7 @@ const lowBatteryIcon = L.divIcon({
 // Lucide "zap" path, inlined because divIcon takes an HTML string
 const recommendedStopIcon = L.divIcon({
   className: "",
-  html: `<div style="display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:${BATTERY_COLORS.good};border:3px solid #fff;box-shadow:0 2px 6px rgba(15,23,42,.5)"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg></div>`,
+  html: `<div style="display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:${BATTERY_COLORS.good};border:3px solid #fff;box-shadow:0 2px 6px rgba(15,23,42,.5)"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="#0B1120" stroke="#0B1120" stroke-width="1.5" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg></div>`,
   iconSize: [40, 40],
   iconAnchor: [20, 20],
   popupAnchor: [0, -20],
@@ -94,7 +95,10 @@ function describeError(error: unknown, t: TFunction): string {
 function DetailsLink({ stationId }: { stationId: string }) {
   const { t } = useTranslation();
   return (
-    <Link to={`/stations/${stationId}`} className="inline-flex items-center gap-1 text-sm underline">
+    <Link
+      to={`/stations/${stationId}`}
+      className="inline-flex items-center gap-1 rounded-sm text-sm font-medium text-accent-ink underline-offset-4 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
+    >
       {t("common.viewDetails")}
       <ArrowRight aria-hidden="true" className="size-3.5 rtl:-scale-x-100" />
     </Link>
@@ -107,7 +111,7 @@ function CompanionHint({ stationId, enabled }: { stationId: string; enabled: boo
   const { data } = useCompanion(stationId, enabled);
   const count = data?.places.length ?? 0;
   if (count === 0) return null;
-  return <p className="text-sm"><span aria-hidden="true">☕ </span>{t("map.companionHint", { count })}</p>;
+  return <p className="text-sm text-muted-foreground"><span aria-hidden="true">☕ </span>{t("map.companionHint", { count })}</p>;
 }
 
 function BoundsWatcher({ onBoundsChange }: { onBoundsChange: (bbox: BoundingBox) => void }) {
@@ -141,7 +145,12 @@ function LocateButton({ onLocate }: { onLocate: (lat: number, lng: number) => vo
   };
   // Inside the left-to-right map container, so the "end" side is chosen explicitly
   return (
-    <Button onClick={handleClick} className={cn("absolute z-[1000] top-3", isRtl ? "left-3" : "right-3")} size="sm">
+    <Button
+      onClick={handleClick}
+      variant="outline"
+      className={cn("absolute z-[1000] top-3 h-10 gap-2 rounded-full px-4 shadow-md", isRtl ? "left-3" : "right-3")}
+    >
+      <LocateFixed aria-hidden="true" className="text-accent-ink" />
       {t("map.locateMe")}
     </Button>
   );
@@ -255,10 +264,7 @@ export default function MapView() {
       {/* The map itself stays left-to-right in every language; popup contents follow the page direction */}
       <div dir="ltr" className="h-full">
         <MapContainer ref={mapRef} center={[34.0, 9.0]} zoom={7} zoomControl={false} style={{ height: "100%", width: "100%" }}>
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          />
+          <MapTiles />
           {/* Zoom sits at the start side; "Locate me" and "Check my range" at the end side */}
           <ZoomControl position={isRtl ? "topright" : "topleft"} />
 
@@ -296,10 +302,10 @@ export default function MapView() {
                   eventHandlers={{ popupopen: () => setOpenedStopId(stop.stationId) }}
                 >
                   <Popup>
-                    <div dir={textDir} className="space-y-1">
-                      <strong>{stop.name}</strong>
-                      <p className="text-sm">{t("map.kmIntoTrip", { km: number(Math.round(stop.distanceAlongKm)) })}</p>
-                      <p className="text-sm">{t("map.arriveWith", { percent: Math.round(stop.batteryOnArrivalPercent) })}</p>
+                    <div dir={textDir} className="space-y-1.5">
+                      <strong className="block text-base font-semibold">{stop.name}</strong>
+                      <p className="text-sm tabular-nums">{t("map.kmIntoTrip", { km: number(Math.round(stop.distanceAlongKm)) })}</p>
+                      <p className="text-sm tabular-nums">{t("map.arriveWith", { percent: Math.round(stop.batteryOnArrivalPercent) })}</p>
                       <CompanionHint stationId={stop.stationId} enabled={openedStopId === stop.stationId} />
                       <DetailsLink stationId={stop.stationId} />
                     </div>
@@ -348,15 +354,15 @@ export default function MapView() {
                   opacity={result && !inReach ? 0.4 : 1}
                 >
                   <Popup>
-                    <div dir={textDir} className="space-y-1">
-                      <strong>{station.name}</strong>
-                      <p className="text-sm">
+                    <div dir={textDir} className="space-y-1.5">
+                      <strong className="block text-base font-semibold">{station.name}</strong>
+                      <p className="text-sm text-muted-foreground">
                         {rating !== null
-                          ? <span aria-label={t("common.ratingShort", { rating })}>★ {rating}</span>
+                          ? <span aria-label={t("common.ratingShort", { rating })} className="tabular-nums"><span className="text-warning">★</span> {rating}</span>
                           : t("common.noReviews")}
                       </p>
                       {inReach && (
-                        <p className="text-sm text-green-700">
+                        <p className="text-sm font-medium text-success-ink">
                           <span aria-hidden="true">✓ </span>{destination ? t("map.onYourWay") : t("map.withinReach")}
                         </p>
                       )}
@@ -372,8 +378,8 @@ export default function MapView() {
 
       {/* Outside MapContainer so clicks on the panel don't reach the map; these follow the page direction */}
       {!showReach && (
-        <Button className="absolute z-[1000] top-14 inset-e-3 gap-1.5" size="sm" variant="secondary" onClick={openPanel}>
-          <Zap className="size-4" aria-hidden />
+        <Button className="absolute z-[1000] top-16 inset-e-3 h-10 gap-2 rounded-full px-4 shadow-md" onClick={openPanel}>
+          <Zap className="size-4 fill-current" aria-hidden />
           {t("map.checkRange")}
         </Button>
       )}
