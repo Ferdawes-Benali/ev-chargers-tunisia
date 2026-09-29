@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\EvChargers.API\EvChargers.API.csproj" />
     <ProjectReference Include="..\..\src\EvChargers.Application\EvChargers.Application.csproj" />
     <ProjectReference Include="..\..\src\EvChargers.Domain\EvChargers.Domain.csproj" />
   </ItemGroup>

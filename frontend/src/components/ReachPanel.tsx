@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Clock, MapPin, Milestone, Route, Thermometer, X, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PlaceSearch from "@/components/PlaceSearch";
 import { cn } from "@/lib/utils";
 import { batteryColor } from "@/lib/battery";
+import { useLocale } from "@/lib/format";
 import { useVehicles } from "@/hooks/useReach";
 import type { PlaceSuggestion, ReachEstimateResult, TripPlanResult } from "@/types/reach";
 import "./ReachPanel.css";
@@ -15,14 +18,14 @@ export interface ReachInputs {
 }
 
 interface ReachPanelProps {
-  /** fresh = the user pressed the button, so the start point may be picked again */
   onEstimate: (inputs: ReachInputs, options: { fresh: boolean }) => void;
   reachResult: ReachEstimateResult | undefined;
   tripResult: TripPlanResult | undefined;
   isPending: boolean;
   error: string | null;
   originLabel: string;
-  /** Changes when the start point changes, to recalculate */
+  /** True when the start is the map center (no GPS position): shows a hint to use "Locate me". */
+  originIsMapCenter: boolean;
   originKey: string;
   destination: PlaceSuggestion | null;
   onDestinationChange: (place: PlaceSuggestion | null) => void;
@@ -39,12 +42,15 @@ const TONE_STYLES: Record<Tone, string> = {
   neutral: "border-sky-200 bg-sky-50 text-sky-950",
 };
 
-/** Turns raw numbers into the one thing the driver needs: a decision. */
-function getVerdict(rangeKm: number, trip: TripPlanResult | undefined, reserve: number): { tone: Tone; title: string; detail: string } {
-  const km = Math.round(rangeKm);
+type Format = (value: number) => string;
+
+function getVerdict(
+  rangeKm: number, trip: TripPlanResult | undefined, reserve: number, t: TFunction, number: Format,
+): { tone: Tone; title: string; detail: string } {
+  const km = number(Math.round(rangeKm));
 
   if (rangeKm === 0) {
-    return { tone: "bad", title: "Charge now", detail: "Your battery is at its reserve level. Find a charger before driving further." };
+    return { tone: "bad", title: t("trip.verdict.chargeNowTitle"), detail: t("trip.verdict.chargeNowDetail") };
   }
 
   if (trip) {
@@ -54,49 +60,57 @@ function getVerdict(rangeKm: number, trip: TripPlanResult | undefined, reserve: 
       if (stop) {
         return {
           tone: "bad",
-          title: "Charge on the way",
-          detail: `Stop at ${stop.name}, ${Math.round(stop.distanceAlongKm)} km into your trip. You'll arrive there with about ${Math.round(stop.batteryOnArrivalPercent)}%.`,
+          title: t("trip.verdict.chargeOnWayTitle"),
+          detail: t("trip.verdict.stopAt", {
+            name: stop.name,
+            km: number(Math.round(stop.distanceAlongKm)),
+            percent: Math.round(stop.batteryOnArrivalPercent),
+          }),
         };
       }
       const shortKm = Math.max(1, Math.ceil(trip.shortfallKm));
       return {
         tone: "bad",
-        title: "Charge on the way",
-        detail: `You'd run about ${shortKm} km short, and there's no known charger on this route before your battery runs low.`,
+        title: t("trip.verdict.chargeOnWayTitle"),
+        detail: t("trip.verdict.shortNoCharger", { km: number(shortKm) }),
       };
     }
     if (trip.batteryOnArrival - reserve < 5) {
-      return { tone: "tight", title: "Tight, but you'll make it", detail: `You'd arrive with about ${arrival}%, just above your reserve. A short charging stop is safer.` };
+      return { tone: "tight", title: t("trip.verdict.tightTitle"), detail: t("trip.verdict.tightDetail", { percent: arrival }) };
     }
-    return { tone: "good", title: "You'll make it", detail: `You'll arrive with about ${arrival}% battery.` };
+    return { tone: "good", title: t("trip.verdict.goodTitle"), detail: t("trip.verdict.goodDetail", { percent: arrival }) };
   }
 
-  if (km < 20) {
-    return { tone: "tight", title: `Only about ${km} km left`, detail: "Head to a charger now." };
+  if (rangeKm < 20) {
+    return { tone: "tight", title: t("trip.verdict.lowTitle", { km }), detail: t("trip.verdict.lowDetail") };
   }
-  return { tone: "neutral", title: `About ${km} km of driving`, detail: "Search for a destination to check a specific trip." };
+  return { tone: "neutral", title: t("trip.verdict.rangeTitle", { km }), detail: t("trip.verdict.rangeDetail") };
 }
 
-function formatDuration(minutes: number) {
+function formatDuration(minutes: number, t: TFunction) {
   const total = Math.max(1, Math.round(minutes));
-  if (total < 60) return `${total} min`;
+  if (total < 60) return t("trip.duration.minutes", { count: total });
   const h = Math.floor(total / 60);
   const m = total % 60;
-  return m === 0 ? `${h} h` : `${h} h ${m} min`;
+  const hours = t("trip.duration.hours", { count: h });
+  return m === 0 ? hours : `${hours} ${t("trip.duration.minutes", { count: m })}`;
 }
 
-/** Distance, time and the conditions detected automatically for the trip. */
 function TripFacts({ trip }: { trip: TripPlanResult }) {
+  const { t } = useTranslation();
+  const { number } = useLocale();
   const facts = [
-    { icon: Route, text: `${Math.round(trip.distanceKm)} km` },
-    { icon: Clock, text: formatDuration(trip.durationMinutes) },
-    { icon: Milestone, text: trip.motorwayShare >= 0.5 ? "Mostly motorway" : "Mostly local roads" },
-    ...(trip.temperatureC !== null ? [{ icon: Thermometer, text: `${Math.round(trip.temperatureC)} °C` }] : []),
+    { key: "distance", icon: Route, text: t("trip.facts.distance", { km: number(Math.round(trip.distanceKm)) }) },
+    { key: "duration", icon: Clock, text: formatDuration(trip.durationMinutes, t) },
+    { key: "roads", icon: Milestone, text: trip.motorwayShare >= 0.5 ? t("trip.facts.motorway") : t("trip.facts.local") },
+    ...(trip.temperatureC !== null
+      ? [{ key: "temperature", icon: Thermometer, text: t("trip.facts.temperature", { value: number(Math.round(trip.temperatureC)) }) }]
+      : []),
   ];
   return (
-    <ul aria-label="Trip details" className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-slate-700">
-      {facts.map(({ icon: Icon, text }) => (
-        <li key={text} className="flex items-center gap-1.5">
+    <ul aria-label={t("trip.facts.label")} className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-slate-700">
+      {facts.map(({ key, icon: Icon, text }) => (
+        <li key={key} className="flex items-center gap-1.5">
           <Icon className="size-4 text-slate-500" aria-hidden />
           {text}
         </li>
@@ -105,15 +119,19 @@ function TripFacts({ trip }: { trip: TripPlanResult }) {
   );
 }
 
-/** A drawing of the battery before, during and after the trip. */
+/**
+ * A drawing of the battery before, during and after the trip.
+ * A quantity gauge: kept left-to-right in every language (empty at the left, full at the right).
+ */
 function TripBar({ battery, arrival, reserve }: { battery: number; arrival: number | null; reserve: number }) {
+  const { t } = useTranslation();
   const [filled, setFilled] = useState(false);
 
   // Replay the fill each time a new result arrives
   useEffect(() => {
     setFilled(false);
-    const t = setTimeout(() => setFilled(true), 30);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setFilled(true), 30);
+    return () => clearTimeout(timer);
   }, [battery, arrival]);
 
   const left = arrival === null ? battery : Math.max(0, Math.min(battery, arrival));
@@ -121,13 +139,13 @@ function TripBar({ battery, arrival, reserve }: { battery: number; arrival: numb
   const belowReserve = arrival !== null && arrival < reserve;
 
   return (
-    <div>
+    <div dir="ltr">
       <div
         role="img"
         aria-label={
           arrival === null
-            ? `${battery}% battery, ${reserve}% kept as reserve`
-            : `Leaving with ${battery}%, arriving with ${Math.round(left)}%, reserve ${reserve}%`
+            ? t("trip.bar.ariaNow", { battery, reserve })
+            : t("trip.bar.ariaTrip", { battery, arrival: Math.round(left), reserve })
         }
         className="relative h-6 overflow-hidden rounded-md border border-slate-300 bg-slate-100"
       >
@@ -154,18 +172,30 @@ function TripBar({ battery, arrival, reserve }: { battery: number; arrival: numb
         />
       </div>
       <div className="mt-1.5 flex justify-between gap-2 text-xs tabular-nums text-slate-600">
-        <span>Reserve {reserve}%</span>
+        <span>{t("trip.bar.reserve", { percent: reserve })}</span>
         {arrival !== null &&
           (belowReserve
-            ? <span className="font-medium text-rose-700">Below reserve on arrival</span>
-            : <span>Arrive with {Math.round(left)}%</span>)}
-        <span>Now {battery}%</span>
+            ? <span className="font-medium text-rose-700">{t("trip.bar.belowReserve")}</span>
+            : <span>{t("trip.bar.arriveWith", { percent: Math.round(left) })}</span>)}
+        <span>{t("trip.bar.now", { percent: battery })}</span>
       </div>
     </div>
   );
 }
 
+function stationLine(trip: TripPlanResult | undefined, reachableCount: number, t: TFunction): string {
+  if (trip) {
+    const along = trip.chargersAlongRouteCount;
+    if (along === 0) return t("trip.stations.noneAlong");
+    if (reachableCount === along) return t("trip.stations.alongAll", { count: along });
+    return `${t("trip.stations.along", { count: along })} ${t("trip.stations.beforeLow", { count: reachableCount })}`;
+  }
+  return reachableCount > 0 ? t("trip.stations.withinReach", { count: reachableCount }) : t("trip.stations.noneInReach");
+}
+
 export default function ReachPanel(props: ReachPanelProps) {
+  const { t } = useTranslation();
+  const { number } = useLocale();
   const { data: vehicles, isLoading: vehiclesLoading } = useVehicles();
   const [vehicleId, setVehicleId] = useState("");
   const [batteryPercent, setBatteryPercent] = useState(80);
@@ -185,43 +215,33 @@ export default function ReachPanel(props: ReachPanelProps) {
   const hasRun = lastInputs !== null;
   useEffect(() => {
     if (!vehicleId || (!hasRun && !destinationKey)) return;
-    const t = setTimeout(() => run({ vehicleId, batteryPercent }, false), 400);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => run({ vehicleId, batteryPercent }, false), 400);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to user inputs, not to the result itself
   }, [vehicleId, batteryPercent, destinationKey, props.originKey]);
 
   const trip = props.tripResult;
   const rangeKm = trip?.rangeKm ?? props.reachResult?.rangeKm;
   const reachableCount = (trip ?? props.reachResult)?.reachableStationIds.length ?? 0;
-  const plural = (n: number) => `${n} charger${n === 1 ? "" : "s"}`;
-  const stationLine = trip
-    ? trip.chargersAlongRouteCount === 0
-      ? "No known chargers along your route."
-      : reachableCount === trip.chargersAlongRouteCount
-        ? `${plural(trip.chargersAlongRouteCount)} along your route, shown as green pins.`
-        : `${plural(trip.chargersAlongRouteCount)} along your route. ${reachableCount} before your battery runs low, shown as green pins.`
-    : reachableCount > 0
-      ? `${plural(reachableCount)} within reach, shown as green pins.`
-      : "No chargers within reach from here.";
   const reserve = vehicles?.find((v) => v.id === (lastInputs?.vehicleId ?? vehicleId))?.socReservePercent ?? 10;
   const resultBattery = lastInputs?.batteryPercent ?? batteryPercent;
-  const verdict = rangeKm !== undefined ? getVerdict(rangeKm, trip, reserve) : null;
+  const verdict = rangeKm !== undefined ? getVerdict(rangeKm, trip, reserve, t, (n) => number(n)) : null;
   const levelColor = batteryColor(batteryPercent);
 
   return (
     <section
-      aria-label="Check my range"
-      className="absolute bottom-3 left-3 right-3 z-1000 max-h-[calc(100vh-110px)] overflow-y-auto rounded-xl border bg-white p-4 shadow-xl sm:right-auto sm:w-88"
+      aria-label={t("reach.panel")}
+      className="absolute bottom-3 inset-s-3 inset-e-3 z-1000 max-h-[calc(100%-24px)] overflow-y-auto rounded-xl border bg-white p-4 shadow-xl sm:inset-e-auto sm:w-88"
     >
       <header className="mb-4 flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-lg font-semibold">
           <Zap className="size-5 text-emerald-600" aria-hidden />
-          Can I make it?
+          {t("reach.title")}
         </h2>
         <button
           type="button"
           onClick={props.onClose}
-          aria-label="Close"
+          aria-label={t("common.close")}
           className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-slate-900"
         >
           <X className="size-5" />
@@ -234,8 +254,8 @@ export default function ReachPanel(props: ReachPanelProps) {
           onValueChange={(v) => setVehicleId(v ?? "")}
           items={vehicles?.map((v) => ({ value: v.id, label: v.name })) ?? []}
         >
-          <SelectTrigger className="w-full" aria-label="Your car">
-            <SelectValue placeholder={vehiclesLoading ? "Loading cars…" : "Choose your car"} />
+          <SelectTrigger className="w-full" aria-label={t("reach.yourCar")}>
+            <SelectValue placeholder={vehiclesLoading ? t("reach.loadingCars") : t("reach.chooseCar")} />
           </SelectTrigger>
           <SelectContent>
             {vehicles?.map((v) => (
@@ -246,14 +266,16 @@ export default function ReachPanel(props: ReachPanelProps) {
 
         <div>
           <div className="mb-2 flex items-baseline justify-between">
-            <label htmlFor="battery" className="text-sm text-slate-700">Battery</label>
-            <span className="text-2xl font-semibold tabular-nums" style={{ color: levelColor }}>
+            <label htmlFor="battery" className="text-sm text-slate-700">{t("reach.battery")}</label>
+            <span className="text-2xl font-semibold tabular-nums" style={{ color: levelColor }} dir="ltr">
               {batteryPercent}%
             </span>
           </div>
+          {/* A gauge: fills left-to-right in every language, like the battery bar */}
           <input
             id="battery"
             type="range"
+            dir="ltr"
             min={0}
             max={100}
             value={batteryPercent}
@@ -266,21 +288,21 @@ export default function ReachPanel(props: ReachPanelProps) {
         <div className="flex gap-3 rounded-lg border p-3 text-sm">
           <div className="flex flex-col items-center pt-1.5" aria-hidden>
             <span className="size-2.5 rounded-full bg-blue-600" />
-            <span className="my-1 h-9 border-l-2 border-dotted border-slate-300" />
+            <span className="my-1 h-9 border-s-2 border-dotted border-slate-300" />
             <MapPin className={cn("size-4", props.destination ? "text-fuchsia-600" : "text-slate-400")} />
           </div>
           <div className="min-w-0 flex-1 space-y-3">
             <div>
-              <p className="text-xs text-slate-500">From</p>
+              <p className="text-xs text-slate-500">{t("reach.from")}</p>
               <p className="font-medium">{props.originLabel}</p>
-              {props.originLabel === "Map center" && (
-                <p className="text-xs text-slate-500">Tap "Locate me" for a precise start.</p>
+              {props.originIsMapCenter && (
+                <p className="text-xs text-slate-500">{t("reach.locateHint")}</p>
               )}
             </div>
             <div>
-              <p className="mb-1 text-xs text-slate-500">To (optional)</p>
+              <p className="mb-1 text-xs text-slate-500">{t("reach.to")}</p>
               <PlaceSearch
-                label="Destination"
+                label={t("reach.destination")}
                 value={props.destination}
                 onSelect={props.onDestinationChange}
                 onClear={() => props.onDestinationChange(null)}
@@ -295,9 +317,9 @@ export default function ReachPanel(props: ReachPanelProps) {
           disabled={!vehicleId || props.isPending}
           onClick={() => run({ vehicleId, batteryPercent }, true)}
         >
-          {props.isPending ? "Checking…" : props.destination ? "Check trip" : "Check range"}
+          {props.isPending ? t("reach.checking") : props.destination ? t("reach.checkTrip") : t("reach.checkRange")}
         </Button>
-        {!vehicleId && <p className="-mt-2 text-center text-xs text-slate-500">Choose your car to start.</p>}
+        {!vehicleId && <p className="-mt-2 text-center text-xs text-slate-500">{t("reach.chooseCarFirst")}</p>}
 
         {props.error && (
           <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
@@ -318,8 +340,8 @@ export default function ReachPanel(props: ReachPanelProps) {
 
             {rangeKm > 0 && (
               <p className="text-sm text-slate-700">
-                {stationLine}
-                {trip && <span className="text-slate-500"> Full range about {Math.round(rangeKm)} km.</span>}
+                {stationLine(trip, reachableCount, t)}
+                {trip && <span className="text-slate-500"> {t("trip.stations.fullRange", { km: number(Math.round(rangeKm)) })}</span>}
               </p>
             )}
           </div>

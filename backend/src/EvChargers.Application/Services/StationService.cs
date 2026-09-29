@@ -1,7 +1,9 @@
+using Microsoft.Extensions.Logging;
 using EvChargers.Application.Common;
 using NetTopologySuite.Geometries;
 using EvChargers.Application.Common.Mapping;
 using EvChargers.Application.DTOs;
+using EvChargers.Application.Email;
 using EvChargers.Application.Interfaces;
 using EvChargers.Domain.Entities;
 using EvChargers.Domain.Enums;
@@ -13,12 +15,17 @@ public class StationService : IStationService
     private readonly IStationRepository _stations;
     private readonly IUserRepository _users;
     private readonly IAuditLogRepository _auditLog;
+    private readonly IEmailQueue _emailQueue;
+    private readonly ILogger<StationService> _logger;
 
-    public StationService(IStationRepository stations, IUserRepository users, IAuditLogRepository auditLog)
+    public StationService(IStationRepository stations, IUserRepository users, IAuditLogRepository auditLog,
+        IEmailQueue emailQueue, ILogger<StationService> logger)
     {
         _stations = stations;
         _users = users;
         _auditLog = auditLog;
+        _emailQueue = emailQueue;
+        _logger = logger;
     }
 
     public async Task<PagedResult<StationListItemDto>> GetPagedAsync(int page, int size, string? connectorType, int? minPowerKw, CancellationToken ct)
@@ -107,11 +114,27 @@ public class StationService : IStationService
         return OperationResult.Ok;
     }
 
+    public const string AnonymousAuthor = "Anonymous";
+
+    /// <summary>Newest first, with author names loaded in a single query.</summary>
     public async Task<List<ReviewDto>?> GetReviewsAsync(Guid stationId, CancellationToken ct)
     {
         var station = await _stations.GetByIdAsync(stationId, ct);
-        return station?.Reviews.Select(r => new ReviewDto(r.Id, r.Rating, r.Comment, r.CreatedAt)).ToList();
+        if (station is null) return null;
+
+        var authorIds = station.Reviews.Where(r => r.UserId.HasValue).Select(r => r.UserId!.Value).Distinct().ToList();
+        var names = await _users.GetDisplayNamesAsync(authorIds, ct);
+
+        return station.Reviews
+            .OrderByDescending(r => r.CreatedAt)
+            .Select(r => new ReviewDto(r.Id, r.Rating, r.Comment, r.CreatedAt, AuthorName(r.UserId, names), r.UserId))
+            .ToList();
     }
+
+    private static string AuthorName(Guid? userId, IReadOnlyDictionary<Guid, string?> names) =>
+        userId is { } id && names.TryGetValue(id, out var name) && !string.IsNullOrWhiteSpace(name)
+            ? name
+            : AnonymousAuthor;
 
     public async Task<ReviewUpsertResult> AddReviewAsync(Guid stationId, CreateReviewRequest req, Guid userId, CancellationToken ct)
     {
@@ -138,7 +161,28 @@ public class StationService : IStationService
             Comment = req.Comment
         };
         await _stations.AddReviewAsync(review, ct);
+        await QueueReviewConfirmationAsync(userId, station.Name, req.Rating, ct);
         return ReviewUpsertResult.Created;
+    }
+
+    /// <summary>Best effort: the review is already saved, so nothing here may fail the request.</summary>
+    private async Task QueueReviewConfirmationAsync(Guid userId, string stationName, int rating, CancellationToken ct)
+    {
+        try
+        {
+            var user = await _users.GetByIdAsync(userId, ct);
+            if (string.IsNullOrWhiteSpace(user?.Email))
+            {
+                _logger.LogInformation("Review confirmation skipped for user {UserId}: no email on file", userId);
+                return;
+            }
+            await _emailQueue.EnqueueAsync(
+                EmailTemplates.ReviewConfirmation(user.Email, user.DisplayName, stationName, rating, user.PreferredLanguage), ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not queue the review confirmation for user {UserId}", userId);
+        }
     }
 
     public async Task<bool> AddCheckinAsync(Guid stationId, CheckinRequest req, Guid userId, CancellationToken ct)

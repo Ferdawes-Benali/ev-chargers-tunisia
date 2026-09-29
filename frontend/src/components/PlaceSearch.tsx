@@ -1,5 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 import { LoaderCircle, MapPin, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePlaceSearch } from "@/hooks/useReach";
@@ -12,6 +13,7 @@ interface PlaceSearchProps {
   /** Suggestions near this point rank higher */
   focus: { lat: number; lng: number } | null;
   label: string;
+  /** Defaults to the translated "Search a city or place". */
   placeholder?: string;
 }
 
@@ -25,7 +27,8 @@ function useDebouncedValue<T>(value: T, delayMs: number) {
 }
 
 /** Place search with suggestions, following the ARIA combobox pattern. */
-export default function PlaceSearch({ value, onSelect, onClear, focus, label, placeholder = "Search a city or place" }: PlaceSearchProps) {
+export default function PlaceSearch({ value, onSelect, onClear, focus, label, placeholder }: PlaceSearchProps) {
+  const { t } = useTranslation();
   const id = useId();
   const listId = `${id}-list`;
   const inputRef = useRef<HTMLInputElement>(null);
@@ -99,17 +102,17 @@ export default function PlaceSearch({ value, onSelect, onClear, focus, label, pl
   const expanded = searching && rect !== null;
   const waiting = isFetching && suggestions.length === 0;
   const status = isError
-    ? "Couldn't search places. Check your connection and try again."
+    ? t("reach.search.error")
     : waiting
-      ? "Searching…"
+      ? t("reach.search.searching")
       : suggestions.length === 0 && !isFetching
-        ? "No places found in Tunisia"
+        ? t("reach.search.none")
         : null;
 
   return (
     <div className="relative">
       <label htmlFor={`${id}-input`} className="sr-only">{label}</label>
-      <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden />
+      <Search className="pointer-events-none absolute inset-s-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden />
       <input
         ref={inputRef}
         id={`${id}-input`}
@@ -121,22 +124,22 @@ export default function PlaceSearch({ value, onSelect, onClear, focus, label, pl
         aria-activedescendant={expanded && activeIndex >= 0 ? `${id}-opt-${activeIndex}` : undefined}
         autoComplete="off"
         spellCheck={false}
-        placeholder={placeholder}
+        placeholder={placeholder ?? t("reach.search.placeholder")}
         value={text}
         onChange={(e) => { setText(e.target.value); setOpen(true); }}
         onFocus={() => { if (text && text !== value?.label) setOpen(true); }}
         onBlur={() => setOpen(false)}
         onKeyDown={onKeyDown}
-        className="h-9 w-full rounded-lg border border-input bg-white pl-8 pr-8 text-sm outline-none placeholder:text-slate-400 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        className="h-9 w-full rounded-lg border border-input bg-white ps-8 pe-8 text-sm outline-none placeholder:text-slate-400 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
       />
       {isFetching && searching && suggestions.length > 0 ? (
-        <LoaderCircle className="absolute right-2.5 top-1/2 size-4 -translate-y-1/2 animate-spin text-slate-400" aria-hidden />
+        <LoaderCircle className="absolute inset-e-2.5 top-1/2 size-4 -translate-y-1/2 animate-spin text-slate-400" aria-hidden />
       ) : text ? (
         <button
           type="button"
           onClick={clear}
-          aria-label="Clear destination"
-          className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-slate-900"
+          aria-label={t("reach.search.clear")}
+          className="absolute inset-e-1.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-slate-900"
         >
           <X className="size-4" />
         </button>
@@ -144,13 +147,14 @@ export default function PlaceSearch({ value, onSelect, onClear, focus, label, pl
 
       {/* Announces results to screen readers without moving focus */}
       <p className="sr-only" aria-live="polite">
-        {expanded && !waiting && !isError ? (suggestions.length ? `${suggestions.length} places found` : status) : ""}
+        {expanded && !waiting && !isError ? (suggestions.length ? t("reach.search.found", { count: suggestions.length }) : status) : ""}
       </p>
 
       {createPortal(
         <div
           hidden={!expanded}
           style={rect ? { left: rect.left, top: rect.top, width: rect.width } : undefined}
+          dir={document.documentElement.dir || "ltr"}
           className="fixed z-[1100] overflow-hidden rounded-lg bg-white text-sm shadow-lg ring-1 ring-slate-900/10"
           // Keep focus in the input while clicking a suggestion
           onMouseDown={(e) => e.preventDefault()}

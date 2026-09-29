@@ -1,0 +1,268 @@
+{
+  "nav": {
+    "main": "Main navigation",
+    "map": "Map",
+    "list": "List",
+    "submit": "Add a charger",
+    "profile": "Profile",
+    "language": "Language"
+  },
+  "auth": {
+    "title": "Log in",
+    "logIn": "Log in",
+    "logOut": "Log out",
+    "google": "Continue with Google",
+    "github": "Continue with GitHub"
+  },
+  "common": {
+    "loading": "Loading…",
+    "close": "Close",
+    "viewDetails": "View details",
+    "noReviews": "No reviews yet",
+    "ratingShort": "Rated {{rating}} out of 5",
+    "status": {
+      "Pending": "Pending",
+      "Verified": "Verified",
+      "Rejected": "Rejected"
+    }
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "loginAgain": "Please log in again.",
+    "noRoute": "We couldn't get a road route to this place right now. Try again in a moment, or pick a nearby town.",
+    "carGone": "This car is no longer available. Choose another car.",
+    "rangeFailed": "Couldn't check your range. Check your connection and try again."
+  },
+  "list": {
+    "title": "Chargers",
+    "loadError": "Couldn't load chargers. Please try again.",
+    "empty": "No chargers match your filters.",
+    "addFavorite": "Add {{name}} to favorites",
+    "removeFavorite": "Remove {{name}} from favorites",
+    "filters": {
+      "connector": "Connector type",
+      "allConnectors": "All connectors",
+      "minPower": "Minimum power",
+      "anyPower": "Any power",
+      "powerAtLeast": "{{power}}+ kW"
+    }
+  },
+  "map": {
+    "locateMe": "Locate me",
+    "checkRange": "Check my range",
+    "lowBattery": "Your battery reaches its reserve here",
+    "recommendedStop": "Recommended charging stop: {{name}}",
+    "kmIntoTrip": "At km {{km}} of your trip",
+    "arriveWith": "You'll arrive with about {{percent}}%",
+    "companionHint_one": "{{count}} place nearby while you charge",
+    "companionHint_other": "{{count}} places nearby while you charge",
+    "startPoint": "Start point",
+    "youAreHere": "You are here",
+    "onYourWay": "On your way",
+    "withinReach": "Within your reach"
+  },
+  "reach": {
+    "panel": "Check my range",
+    "title": "Can I make it?",
+    "yourCar": "Your car",
+    "loadingCars": "Loading cars…",
+    "chooseCar": "Choose your car",
+    "battery": "Battery",
+    "from": "From",
+    "to": "To (optional)",
+    "destination": "Destination",
+    "yourLocation": "Your location",
+    "mapCenter": "Map center",
+    "locateHint": "Tap “Locate me” for a precise start.",
+    "checkTrip": "Check trip",
+    "checkRange": "Check range",
+    "checking": "Checking…",
+    "chooseCarFirst": "Choose your car to start.",
+    "search": {
+      "placeholder": "Search a city or place",
+      "clear": "Clear destination",
+      "searching": "Searching…",
+      "error": "Couldn't search places. Check your connection and try again.",
+      "none": "No places found in Tunisia",
+      "found_one": "{{count}} place found",
+      "found_other": "{{count}} places found"
+    }
+  },
+  "trip": {
+    "verdict": {
+      "chargeNowTitle": "Charge now",
+      "chargeNowDetail": "Your battery is at its reserve level. Find a charger before driving further.",
+      "chargeOnWayTitle": "Charge on the way",
+      "stopAt": "Stop at {{name}}, {{km}} km into your trip. You'll arrive there with about {{percent}}%.",
+      "shortNoCharger": "You'd run about {{km}} km short, and there's no known charger on this route before your battery runs low.",
+      "tightTitle": "Tight, but you'll make it",
+      "tightDetail": "You'd arrive with about {{percent}}%, just above your reserve. A short charging stop is safer.",
+      "goodTitle": "You'll make it",
+      "goodDetail": "You'll arrive with about {{percent}}% battery.",
+      "lowTitle": "Only about {{km}} km left",
+      "lowDetail": "Head to a charger now.",
+      "rangeTitle": "About {{km}} km of driving",
+      "rangeDetail": "Search for a destination to check a specific trip."
+    },
+    "facts": {
+      "label": "Trip details",
+      "distance": "{{km}} km",
+      "motorway": "Mostly motorway",
+      "local": "Mostly local roads",
+      "temperature": "{{value}} °C"
+    },
+    "duration": {
+      "minutes_one": "{{count}} min",
+      "minutes_other": "{{count}} min",
+      "hours_one": "{{count}} h",
+      "hours_other": "{{count}} h"
+    },
+    "bar": {
+      "ariaNow": "{{battery}}% battery, {{reserve}}% kept as reserve",
+      "ariaTrip": "Leaving with {{battery}}%, arriving with {{arrival}}%, reserve {{reserve}}%",
+      "reserve": "Reserve {{percent}}%",
+      "belowReserve": "Below reserve on arrival",
+      "arriveWith": "Arrive with {{percent}}%",
+      "now": "Now {{percent}}%"
+    },
+    "stations": {
+      "noneAlong": "No known chargers along your route.",
+      "alongAll_one": "{{count}} charger along your route, shown as a green pin.",
+      "alongAll_other": "{{count}} chargers along your route, shown as green pins.",
+      "along_one": "{{count}} charger along your route.",
+      "along_other": "{{count}} chargers along your route.",
+      "beforeLow_one": "{{count}} before your battery runs low, shown as a green pin.",
+      "beforeLow_other": "{{count}} before your battery runs low, shown as green pins.",
+      "withinReach_one": "{{count}} charger within reach, shown as a green pin.",
+      "withinReach_other": "{{count}} chargers within reach, shown as green pins.",
+      "noneInReach": "No chargers within reach from here.",
+      "fullRange": "Full range about {{km}} km."
+    }
+  },
+  "companion": {
+    "title": "While you charge",
+    "chargeFor_one": "You'll charge for about {{count}} min — back by <strong>{{time}}</strong>",
+    "chargeFor_other": "You'll charge for about {{count}} min — back by <strong>{{time}}</strong>",
+    "chargerHint": "{{power}} kW charger, from 20 to 80% for a typical car",
+    "shortWalk": "Places within a short walk",
+    "loading": "Loading nearby places",
+    "unavailable": "Nearby places are unavailable right now.",
+    "empty": "Nothing within walking distance — a good moment for a coffee in the car ☕",
+    "credit": "Places ©",
+    "creditLink": "OpenStreetMap contributors",
+    "filters": "Filter places",
+    "all": "All",
+    "picks": "Suggestions for your wait",
+    "groups": {
+      "eat": "Eat & drink",
+      "pray": "Pray",
+      "essentials": "Essentials",
+      "relax": "Relax",
+      "shop": "Shop"
+    },
+    "pickKind": {
+      "coffee": "Quick coffee",
+      "lunch": "Lunch",
+      "dinner": "Dinner",
+      "pray": "Pray",
+      "walk": "Take a walk"
+    },
+    "bands": {
+      "min2": "Within 2 min walk",
+      "min5": "Within 5 min walk",
+      "min10": "Within 10 min walk",
+      "min15": "Within 15 min walk",
+      "far": "A bit farther"
+    },
+    "walk_one": "{{count}} min walk",
+    "walk_other": "{{count}} min walk",
+    "aboutWalk_one": "About {{count}} min walk",
+    "aboutWalk_other": "About {{count}} min walk",
+    "roundTrip_one": "{{count}} min there and back",
+    "roundTrip_other": "{{count}} min there and back",
+    "meters": "{{value}} m",
+    "findingRoute": "(finding the walking route…)",
+    "budget": {
+      "there_one": "{{count}} min there",
+      "there_other": "{{count}} min there",
+      "stay_one": "about {{count}} min to stay",
+      "stay_other": "about {{count}} min to stay",
+      "back_one": "{{count}} min back",
+      "back_other": "{{count}} min back",
+      "tight": "Tight: you'd be back after your car is ready"
+    },
+    "status": {
+      "openUntil": "Open · closes {{time}}",
+      "open247": "Open 24/7",
+      "closedUntil": "Closed · opens {{time}}",
+      "closed": "Closed"
+    },
+    "closeCard": "Close place details",
+    "openInMaps": "Open in Google Maps",
+    "openInMapsAria": "Open walking directions to {{name}} in Google Maps"
+  },
+  "detail": {
+    "loading": "Loading charger",
+    "notFound": "Charger not found.",
+    "verify": "Verify charger (admin)",
+    "verifying": "Verifying…",
+    "operator": "Operator: {{name}}",
+    "connectors": "Connectors",
+    "noConnectors": "No connector info yet.",
+    "connectorLine": "{{type}} — {{power}} kW × {{count}}",
+    "directions": "Get directions"
+  },
+  "reviews": {
+    "title": "Reviews",
+    "count_one": "{{count}} review",
+    "count_other": "{{count}} reviews",
+    "write": "Write a review",
+    "edit": "Edit your review",
+    "yourRating": "Your rating",
+    "comment": "Comment",
+    "optional": "(optional)",
+    "placeholder": "How was charging here? Waiting time, working connectors, access…",
+    "submit": "Submit review",
+    "update": "Update review",
+    "saving": "Saving…",
+    "chooseRating": "Choose a rating to continue.",
+    "created": "Thanks! Your review was published.",
+    "updated": "Your review was updated.",
+    "saveError": "Couldn't save your review. Please try again.",
+    "loadError": "Couldn't load reviews.",
+    "empty": "No reviews yet — be the first to share your experience.",
+    "loginToReview": "Log in to write a review",
+    "you": "You",
+    "stars_one": "{{count}} star",
+    "stars_other": "{{count}} stars",
+    "outOf": "{{rating}} out of 5 stars"
+  },
+  "submit": {
+    "title": "Add a charger",
+    "name": "Charger name",
+    "address": "Address (optional)",
+    "connector": "Connector type",
+    "power": "Power (kW)",
+    "submit": "Submit charger",
+    "submitting": "Submitting…",
+    "success": "Charger submitted!",
+    "loginRequired": "Please log in to submit a charger.",
+    "locationHint": "Click the map to set the charger's location, or drag the marker to adjust.",
+    "markerAlt": "Charger location",
+    "errors": {
+      "nameRequired": "Name is required",
+      "nameTooLong": "Name must be 120 characters or fewer",
+      "locationRequired": "Click the map to set a location",
+      "connectorRequired": "Choose a connector type",
+      "powerInvalid": "Enter the power in kW",
+      "powerPositive": "Power must be greater than 0"
+    }
+  },
+  "profile": {
+    "title": "Profile",
+    "loading": "Loading profile…",
+    "favorites": "Favorites",
+    "noFavorites": "No favorites yet — tap the heart on a charger to save it here.",
+    "loadError": "Couldn't load your favorites. Please try again."
+  }
+}

@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using EvChargers.Application.Interfaces;
@@ -10,26 +11,38 @@ public class OrsDirectionsProvider : IRoutingProvider
 {
     private const int MaxPoints = 400;
     private const int HighwayBit = 1; // ORS waycategory is a bit field: 1 = highway (motorway/trunk)
+    // Footpaths hardly change and walking routes are short and repeated: spare the free ORS quota
+    private static readonly TimeSpan WalkingCacheDuration = TimeSpan.FromHours(24);
 
     private readonly HttpClient _http;
+    private readonly IMemoryCache _cache;
     private readonly ILogger<OrsDirectionsProvider> _logger;
     private readonly string? _apiKey;
 
-    public OrsDirectionsProvider(HttpClient http, IConfiguration config, ILogger<OrsDirectionsProvider> logger)
+    public OrsDirectionsProvider(HttpClient http, IMemoryCache cache, IConfiguration config, ILogger<OrsDirectionsProvider> logger)
     {
         _http = http;
+        _cache = cache;
         _logger = logger;
         _apiKey = config["OrsApiKey"];
         _http.BaseAddress = new Uri("https://api.openrouteservice.org/");
     }
 
-    public async Task<RouteData?> GetRouteAsync(double fromLat, double fromLng, double toLat, double toLng, CancellationToken ct)
+    public async Task<RouteData?> GetRouteAsync(double fromLat, double fromLng, double toLat, double toLng, CancellationToken ct,
+                                                string profile = RoutingProfiles.Car)
     {
         if (string.IsNullOrEmpty(_apiKey))
         {
             _logger.LogWarning("ORS API key not configured; skipping directions.");
             return null;
         }
+
+        // Only walking routes are cached; driving routes behave exactly as before
+        var cacheKey = profile == RoutingProfiles.Foot
+            ? FormattableString.Invariant($"route:{profile}:{Math.Round(fromLat, 5)},{Math.Round(fromLng, 5)}:{Math.Round(toLat, 5)},{Math.Round(toLng, 5)}")
+            : null;
+        if (cacheKey is not null && _cache.TryGetValue(cacheKey, out RouteData? cached))
+            return cached;
 
         try
         {
@@ -40,7 +53,7 @@ public class OrsDirectionsProvider : IRoutingProvider
                 options = new { avoid_features = new[] { "ferries" } },
             };
 
-            using var request = new HttpRequestMessage(HttpMethod.Post, "v2/directions/driving-car/geojson")
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"v2/directions/{profile}/geojson")
             {
                 Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json"),
             };
@@ -69,7 +82,9 @@ public class OrsDirectionsProvider : IRoutingProvider
                 .Select(c => new[] { c[1].GetDouble(), c[0].GetDouble() })
                 .ToList();
 
-            return new RouteData(distanceM / 1000, durationS / 60, Downsample(points, MaxPoints), MotorwayShare(properties));
+            var route = new RouteData(distanceM / 1000, durationS / 60, Downsample(points, MaxPoints), MotorwayShare(properties));
+            if (cacheKey is not null) _cache.Set(cacheKey, route, WalkingCacheDuration);
+            return route;
         }
         catch (Exception ex)
         {
