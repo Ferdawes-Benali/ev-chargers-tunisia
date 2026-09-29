@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import axios from "axios";
+import { CircleAlert, CircleCheck, MapPin, PlugZap, Send } from "lucide-react";
 import LocationPicker from "@/components/LocationPicker";
+import SectionCard from "@/components/SectionCard";
 
 // Connector names are standards: never translated
 const CONNECTOR_TYPES = ["Type2", "CCS", "CHAdeMO", "Tesla"] as const;
@@ -58,67 +60,121 @@ export default function SubmitPage() {
     t(message?.startsWith("submit.errors.") ? message : fallbackKey);
 
   return (
-    <div className="p-4 max-w-md">
-      <h1 className="text-xl font-bold mb-4">{t("submit.title")}</h1>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div>
-          <Input placeholder={t("submit.name")} aria-label={t("submit.name")} aria-invalid={!!errors.name} {...register("name")} />
-          {errors.name && <p className="text-sm text-destructive">{errorText(errors.name.message, "submit.errors.nameRequired")}</p>}
-        </div>
+    <div className="mx-auto max-w-2xl px-4 pt-6 sm:py-8">
+      <div className="mb-6 space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight">{t("submit.title")}</h1>
+        <p className="text-muted-foreground">{t("submit.subtitle")}</p>
+      </div>
 
-        <div>
-          <Input placeholder={t("submit.address")} aria-label={t("submit.address")} {...register("address")} />
-        </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <SectionCard title={t("submit.sections.location")} description={t("submit.sections.locationHelp")} icon={MapPin}>
+          <Field htmlFor="submit-name" label={t("submit.name")} help={t("submit.help.name")}>
+            <Input
+              id="submit-name"
+              className="h-10"
+              placeholder={t("submit.placeholders.name")}
+              aria-label={t("submit.name")}
+              aria-invalid={!!errors.name}
+              aria-describedby="submit-name-help"
+              {...register("name")}
+            />
+            {errors.name && <p className="text-sm text-destructive">{errorText(errors.name.message, "submit.errors.nameRequired")}</p>}
+          </Field>
 
-        <div>
-          <LocationPicker
-            onPick={(lat, lng) => {
-              setValue("lat", lat, { shouldValidate: true });
-              setValue("lng", lng, { shouldValidate: true });
-            }}
-          />
-          {(errors.lat || errors.lng) && (
-            <p className="text-sm text-destructive mt-1">{t("submit.errors.locationRequired")}</p>
+          <Field htmlFor="submit-address" label={t("submit.address")}>
+            <Input
+              id="submit-address"
+              className="h-10"
+              placeholder={t("submit.placeholders.address")}
+              aria-label={t("submit.address")}
+              {...register("address")}
+            />
+          </Field>
+
+          <div className="space-y-1.5">
+            <p className="text-sm font-medium">{t("submit.mapLabel")}</p>
+            <LocationPicker
+              onPick={(lat, lng) => {
+                setValue("lat", lat, { shouldValidate: true });
+                setValue("lng", lng, { shouldValidate: true });
+              }}
+            />
+            {(errors.lat || errors.lng) && (
+              <p className="text-sm text-destructive mt-1">{t("submit.errors.locationRequired")}</p>
+            )}
+          </div>
+        </SectionCard>
+
+        <SectionCard title={t("submit.sections.details")} description={t("submit.sections.detailsHelp")} icon={PlugZap}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              {/* The trigger is named by its aria-label; this is the visible label */}
+              <p className="text-sm font-medium" aria-hidden="true">{t("submit.connector")}</p>
+              <Select
+                onValueChange={(v) => setValue("connectorType", v as FormValues["connectorType"], { shouldValidate: true })}
+                items={CONNECTOR_TYPES.map((type) => ({ value: type, label: type }))}
+              >
+                <SelectTrigger className="h-10 w-full" aria-label={t("submit.connector")} aria-invalid={!!errors.connectorType}>
+                  <SelectValue placeholder={t("submit.placeholders.connector")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {CONNECTOR_TYPES.map((type) => (
+                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.connectorType && <p className="text-sm text-destructive">{t("submit.errors.connectorRequired")}</p>}
+            </div>
+
+            <Field htmlFor="submit-power" label={t("submit.power")} help={t("submit.help.power")}>
+              <Input
+                id="submit-power"
+                className="h-10 tabular-nums"
+                placeholder={t("submit.placeholders.power")}
+                aria-label={t("submit.power")}
+                aria-invalid={!!errors.powerKw}
+                aria-describedby="submit-power-help"
+                type="number"
+                {...register("powerKw")}
+              />
+              {errors.powerKw && <p className="text-sm text-destructive">{errorText(errors.powerKw.message, "submit.errors.powerInvalid")}</p>}
+            </Field>
+          </div>
+        </SectionCard>
+
+        {/* On phones the submit bar stays at the bottom of the screen while scrolling */}
+        <div className="sticky bottom-0 z-10 -mx-4 space-y-3 border-t bg-background px-4 py-3 sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:pb-0">
+          {mutation.isError && (
+            <p role="alert" className="flex items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-destructive">
+              <CircleAlert aria-hidden="true" className="mt-px size-4 shrink-0" />
+              {axios.isAxiosError(mutation.error) && mutation.error.response?.status === 401
+                ? t("submit.loginRequired")
+                : t("errors.generic")}
+            </p>
           )}
+          {mutation.isSuccess && (
+            <p role="status" className="flex items-center gap-2 rounded-lg border border-success/40 bg-success/10 p-3 text-sm text-success-ink">
+              <CircleCheck aria-hidden="true" className="size-4 shrink-0" />
+              {t("submit.success")}
+            </p>
+          )}
+          <Button type="submit" disabled={mutation.isPending} className="h-11 w-full gap-2 text-base sm:w-auto sm:px-6">
+            <Send aria-hidden="true" className="rtl:-scale-x-100" />
+            {mutation.isPending ? t("submit.submitting") : t("submit.submit")}
+          </Button>
         </div>
-
-        <div>
-          <Select
-            onValueChange={(v) => setValue("connectorType", v as FormValues["connectorType"], { shouldValidate: true })}
-            items={CONNECTOR_TYPES.map((type) => ({ value: type, label: type }))}
-          >
-            <SelectTrigger aria-label={t("submit.connector")} aria-invalid={!!errors.connectorType}>
-              <SelectValue placeholder={t("submit.connector")} />
-            </SelectTrigger>
-            <SelectContent>
-              {CONNECTOR_TYPES.map((type) => (
-                <SelectItem key={type} value={type}>{type}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.connectorType && <p className="text-sm text-destructive">{t("submit.errors.connectorRequired")}</p>}
-        </div>
-
-        <div>
-          <Input placeholder={t("submit.power")} aria-label={t("submit.power")} aria-invalid={!!errors.powerKw} type="number" {...register("powerKw")} />
-          {errors.powerKw && <p className="text-sm text-destructive">{errorText(errors.powerKw.message, "submit.errors.powerInvalid")}</p>}
-        </div>
-
-        <Button type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? t("submit.submitting") : t("submit.submit")}
-        </Button>
-
-        {mutation.isError && (
-          <p role="alert" className="text-sm text-destructive">
-            {axios.isAxiosError(mutation.error) && mutation.error.response?.status === 401
-              ? t("submit.loginRequired")
-              : t("errors.generic")}
-          </p>
-        )}
-        {mutation.isSuccess && (
-          <p role="status" className="text-sm text-green-600">{t("submit.success")}</p>
-        )}
       </form>
+    </div>
+  );
+}
+
+/** A visible label, the control, and optional helper text below it (id: `<htmlFor>-help`). */
+function Field({ htmlFor, label, help, children }: { htmlFor: string; label: string; help?: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <label htmlFor={htmlFor} className="text-sm font-medium">{label}</label>
+      {children}
+      {help && <p id={`${htmlFor}-help`} className="text-xs text-muted-foreground">{help}</p>}
     </div>
   );
 }

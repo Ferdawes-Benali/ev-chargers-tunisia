@@ -1,18 +1,31 @@
 import { useTranslation } from "react-i18next";
+import { SearchX, TriangleAlert } from "lucide-react";
 import { useStations } from "@/hooks/useStations";
 import { useFilterStore } from "@/store/filterStore";
 import StationCard from "@/components/StationCard";
 import StationCardSkeleton from "@/components/StationCardSkeleton";
 import FilterBar from "@/components/FilterBar";
+import EmptyState from "@/components/EmptyState";
+import { Button } from "@/components/ui/button";
+import { useLocale } from "@/lib/format";
 
 export default function ListPage() {
   const { t } = useTranslation();
-  const { connectorType, minPowerKw } = useFilterStore();
+  const { number } = useLocale();
+  const { connectorType, minPowerKw, setConnectorType, setMinPowerKw } = useFilterStore();
   const { data, isLoading, error } = useStations(1, 20, connectorType, minPowerKw);
+  const hasFilters = connectorType !== null || minPowerKw !== null;
 
   return (
-    <div className="p-4">
-      <h1 className="text-xl font-bold mb-4">{t("list.title")}</h1>
+    <div className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-2">
+        <h1 className="text-2xl font-bold tracking-tight">{t("list.title")}</h1>
+        {!isLoading && !error && data && data.total > 0 && (
+          <p className="text-sm text-muted-foreground tabular-nums">
+            {t("list.count", { count: data.total, formatted: number(data.total) })}
+          </p>
+        )}
+      </div>
       <FilterBar />
 
       {isLoading && (
@@ -23,12 +36,27 @@ export default function ListPage() {
         </div>
       )}
 
-      {error && (
-        <div className="text-center text-muted-foreground">{t("list.loadError")}</div>
-      )}
+      {error && <EmptyState icon={TriangleAlert} tone="danger" title={t("list.loadError")} />}
 
       {!isLoading && !error && (!data || data.data.length === 0) && (
-        <div className="text-center text-muted-foreground">{t("list.empty")}</div>
+        <EmptyState
+          icon={SearchX}
+          title={t("list.emptyTitle")}
+          text={hasFilters ? t("list.empty") : undefined}
+          action={
+            hasFilters && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setConnectorType(null);
+                  setMinPowerKw(null);
+                }}
+              >
+                {t("list.filters.clear")}
+              </Button>
+            )
+          }
+        />
       )}
 
       {!isLoading && !error && data && data.data.length > 0 && (

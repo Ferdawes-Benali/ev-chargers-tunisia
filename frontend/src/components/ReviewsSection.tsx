@@ -2,6 +2,7 @@ import { useId, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
+import { LogIn, MessageSquareText } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useReviews, useSaveReview } from "@/hooks/useReviews";
@@ -9,10 +10,11 @@ import { relativeTime } from "@/lib/relativeTime";
 import { useLocale } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StarRatingDisplay, StarRatingInput } from "@/components/StarRating";
+import SectionCard from "@/components/SectionCard";
 import type { Review, SaveReviewOutcome } from "@/types/review";
 import type { StationDetail } from "@/types/station";
 
@@ -39,21 +41,24 @@ export default function ReviewsSection({ station }: { station: StationDetail }) 
   const sorted = [...(reviews ?? [])].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
 
   return (
-    <section aria-labelledby="reviews-heading" className="space-y-3">
-      <div>
-        <h2 id="reviews-heading" className="font-semibold">{t("reviews.title")}</h2>
-        {station.avgRating !== null && station.reviewCount > 0 && (
-          <p className="mt-1 flex items-center gap-2 text-sm">
+    <SectionCard
+      title={t("reviews.title")}
+      titleId="reviews-heading"
+      icon={MessageSquareText}
+      description={
+        station.avgRating !== null && station.reviewCount > 0 && (
+          <p className="flex flex-wrap items-center gap-2">
             <StarRatingDisplay rating={station.avgRating} />
-            <span>
-              <span className="font-medium">{number(station.avgRating, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
-              <span className="text-muted-foreground">
+            <span className="tabular-nums">
+              <span className="font-semibold text-foreground">{number(station.avgRating, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+              <span>
                 {" "}· {t("reviews.count", { count: station.reviewCount })}
               </span>
             </span>
           </p>
-        )}
-      </div>
+        )
+      }
+    >
 
       {!authLoading &&
         (isLoggedIn ? (
@@ -68,7 +73,8 @@ export default function ReviewsSection({ station }: { station: StationDetail }) 
           />
         ) : (
           <p className="text-sm">
-            <Link to="/login" className="underline underline-offset-4">
+            <Link to="/login" className={buttonVariants({ variant: "outline", className: "gap-2" })}>
+              <LogIn aria-hidden="true" className="rtl:-scale-x-100" />
               {t("reviews.loginToReview")}
             </Link>
           </p>
@@ -77,7 +83,10 @@ export default function ReviewsSection({ station }: { station: StationDetail }) 
       {notice && (
         <p
           role={notice.kind === "error" ? "alert" : "status"}
-          className={cn("text-sm", notice.kind === "error" ? "text-destructive" : "text-emerald-700 dark:text-emerald-400")}
+          className={cn(
+            "rounded-lg border p-3 text-sm",
+            notice.kind === "error" ? "border-danger/40 bg-danger/10 text-destructive" : "border-success/40 bg-success/10 text-success-ink",
+          )}
         >
           {t(notice.key)}
         </p>
@@ -93,13 +102,13 @@ export default function ReviewsSection({ station }: { station: StationDetail }) 
       ) : sorted.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("reviews.empty")}</p>
       ) : (
-        <ul className="divide-y rounded-xl ring-1 ring-foreground/10">
+        <ul className="divide-y overflow-hidden rounded-xl ring-1 ring-border">
           {sorted.map((review) => (
             <ReviewItem key={review.id} review={review} isMine={review.id === myReview?.id} />
           ))}
         </ul>
       )}
-    </section>
+    </SectionCard>
   );
 }
 
@@ -107,20 +116,26 @@ function ReviewItem({ review, isMine }: { review: Review; isMine: boolean }) {
   const { t } = useTranslation();
   const { locale } = useLocale();
   return (
-    <li className="space-y-1 p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-medium">{review.authorName}</span>
-        {isMine && <Badge variant="secondary">{t("reviews.you")}</Badge>}
+    <li className={cn("flex gap-3 p-4", isMine && "bg-primary/5")}>
+      {/* Initial of the author, decorative */}
+      <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-full bg-muted text-sm font-semibold text-muted-foreground uppercase">
+        {review.authorName.trim().charAt(0)}
+      </span>
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="text-sm font-semibold">{review.authorName}</span>
+          {isMine && <Badge className="border-primary/40 bg-primary/12 text-success-ink">{t("reviews.you")}</Badge>}
+          <time
+            dateTime={review.createdAt}
+            title={new Date(review.createdAt).toLocaleString(locale)}
+            className="ms-auto text-xs text-muted-foreground"
+          >
+            {relativeTime(review.createdAt, locale)}
+          </time>
+        </div>
         <StarRatingDisplay rating={review.rating} />
-        <time
-          dateTime={review.createdAt}
-          title={new Date(review.createdAt).toLocaleString(locale)}
-          className="ms-auto text-xs text-muted-foreground"
-        >
-          {relativeTime(review.createdAt, locale)}
-        </time>
+        {review.comment && <p className="text-sm whitespace-pre-line wrap-break-word">{review.comment}</p>}
       </div>
-      {review.comment && <p className="text-sm whitespace-pre-line break-words">{review.comment}</p>}
     </li>
   );
 }
@@ -160,9 +175,9 @@ function ReviewForm({ stationId, existing, onSaved, onError, onEdit }: ReviewFor
   };
 
   return (
-    <Card>
+    <Card className="bg-muted/40 shadow-none">
       <CardHeader>
-        <CardTitle>{existing ? t("reviews.edit") : t("reviews.write")}</CardTitle>
+        <CardTitle className="font-semibold">{existing ? t("reviews.edit") : t("reviews.write")}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={submit} className="space-y-3">
@@ -193,9 +208,9 @@ function ReviewForm({ stationId, existing, onSaved, onError, onEdit }: ReviewFor
               rows={4}
               aria-describedby={counterId}
               placeholder={t("reviews.placeholder")}
-              className="w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-2 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30"
+              className="w-full min-w-0 rounded-lg border border-input bg-card px-3 py-2 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm"
             />
-            <p id={counterId} className="text-end text-xs text-muted-foreground">
+            <p id={counterId} className="text-end text-xs text-muted-foreground tabular-nums">
               {comment.length}/{MAX_COMMENT}
             </p>
           </div>

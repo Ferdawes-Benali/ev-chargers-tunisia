@@ -12,7 +12,7 @@ export default function OpenStatusText({ place, className }: { place: CompanionP
     <span
       className={cn(
         "text-xs",
-        place.openStatus === "open" ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground",
+        place.openStatus === "open" ? "font-medium text-success-ink" : "text-muted-foreground",
         className,
       )}
     >

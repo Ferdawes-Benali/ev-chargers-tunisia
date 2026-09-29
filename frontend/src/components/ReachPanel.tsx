@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { Clock, MapPin, Milestone, Route, Thermometer, X, Zap } from "lucide-react";
+import { CircleAlert, CircleCheck, Clock, Info, MapPin, Milestone, Route, Thermometer, TriangleAlert, X, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PlaceSearch from "@/components/PlaceSearch";
@@ -36,10 +36,17 @@ interface ReachPanelProps {
 type Tone = "good" | "tight" | "bad" | "neutral";
 
 const TONE_STYLES: Record<Tone, string> = {
-  good: "border-emerald-200 bg-emerald-50 text-emerald-950",
-  tight: "border-amber-200 bg-amber-50 text-amber-950",
-  bad: "border-rose-200 bg-rose-50 text-rose-950",
-  neutral: "border-sky-200 bg-sky-50 text-sky-950",
+  good: "border-success/40 bg-success/10",
+  tight: "border-warning/45 bg-warning/10",
+  bad: "border-danger/40 bg-danger/10",
+  neutral: "border-accent/40 bg-accent/10",
+};
+
+const TONE_ICONS: Record<Tone, { icon: typeof Info; className: string }> = {
+  good: { icon: CircleCheck, className: "text-success-ink" },
+  tight: { icon: TriangleAlert, className: "text-warning-ink" },
+  bad: { icon: CircleAlert, className: "text-danger-ink" },
+  neutral: { icon: Info, className: "text-accent-ink" },
 };
 
 type Format = (value: number) => string;
@@ -108,10 +115,10 @@ function TripFacts({ trip }: { trip: TripPlanResult }) {
       : []),
   ];
   return (
-    <ul aria-label={t("trip.facts.label")} className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-slate-700">
+    <ul aria-label={t("trip.facts.label")} className="grid grid-cols-2 gap-2 text-sm">
       {facts.map(({ key, icon: Icon, text }) => (
-        <li key={key} className="flex items-center gap-1.5">
-          <Icon className="size-4 text-slate-500" aria-hidden />
+        <li key={key} className="flex items-center gap-2 rounded-lg bg-muted px-2.5 py-2 tabular-nums">
+          <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
           {text}
         </li>
       ))}
@@ -147,7 +154,7 @@ function TripBar({ battery, arrival, reserve }: { battery: number; arrival: numb
             ? t("trip.bar.ariaNow", { battery, reserve })
             : t("trip.bar.ariaTrip", { battery, arrival: Math.round(left), reserve })
         }
-        className="relative h-6 overflow-hidden rounded-md border border-slate-300 bg-slate-100"
+        className="relative h-6 overflow-hidden rounded-md border bg-muted"
       >
         <div
           className="absolute inset-y-0 left-0 motion-safe:transition-[width] motion-safe:duration-700 motion-safe:ease-out"
@@ -155,29 +162,25 @@ function TripBar({ battery, arrival, reserve }: { battery: number; arrival: numb
         />
         {used > 0 && (
           <div
-            className="absolute inset-y-0 motion-safe:transition-[width] motion-safe:delay-300 motion-safe:duration-700 motion-safe:ease-out"
+            className="trip-used absolute inset-y-0 motion-safe:transition-[width] motion-safe:delay-300 motion-safe:duration-700 motion-safe:ease-out"
             style={{
               left: `${left}%`,
               width: filled ? `${used}%` : "0%",
-              background: "repeating-linear-gradient(135deg, #94a3b8 0 4px, #cbd5e1 4px 8px)",
             }}
           />
         )}
         <div
-          className="absolute inset-y-0 left-0 border-r-2 border-dashed border-slate-700/70"
-          style={{
-            width: `${reserve}%`,
-            background: "repeating-linear-gradient(135deg, rgba(15,23,42,.15) 0 3px, transparent 3px 6px)",
-          }}
+          className="trip-reserve absolute inset-y-0 left-0 border-r-2 border-dashed border-foreground/60"
+          style={{ width: `${reserve}%` }}
         />
       </div>
-      <div className="mt-1.5 flex justify-between gap-2 text-xs tabular-nums text-slate-600">
-        <span>{t("trip.bar.reserve", { percent: reserve })}</span>
+      <div className="mt-1.5 flex justify-between gap-2 text-xs tabular-nums text-muted-foreground">
+        <span dir="auto">{t("trip.bar.reserve", { percent: reserve })}</span>
         {arrival !== null &&
           (belowReserve
-            ? <span className="font-medium text-rose-700">{t("trip.bar.belowReserve")}</span>
-            : <span>{t("trip.bar.arriveWith", { percent: Math.round(left) })}</span>)}
-        <span>{t("trip.bar.now", { percent: battery })}</span>
+            ? <span dir="auto" className="font-medium text-danger-ink">{t("trip.bar.belowReserve")}</span>
+            : <span dir="auto">{t("trip.bar.arriveWith", { percent: Math.round(left) })}</span>)}
+        <span dir="auto">{t("trip.bar.now", { percent: battery })}</span>
       </div>
     </div>
   );
@@ -227,25 +230,25 @@ export default function ReachPanel(props: ReachPanelProps) {
   const resultBattery = lastInputs?.batteryPercent ?? batteryPercent;
   const verdict = rangeKm !== undefined ? getVerdict(rangeKm, trip, reserve, t, (n) => number(n)) : null;
   const levelColor = batteryColor(batteryPercent);
+  const VerdictIcon = verdict ? TONE_ICONS[verdict.tone].icon : null;
 
   return (
     <section
       aria-label={t("reach.panel")}
-      className="absolute bottom-3 inset-s-3 inset-e-3 z-1000 max-h-[calc(100%-24px)] overflow-y-auto rounded-xl border bg-white p-4 shadow-xl sm:inset-e-auto sm:w-88"
+      // Mobile: a bottom sheet. Wider screens: a side card at the start side, below the zoom control.
+      className="absolute inset-x-0 bottom-0 z-1000 max-h-[72%] overflow-y-auto rounded-t-2xl border-t bg-card p-4 pt-2 text-card-foreground shadow-2xl sm:inset-x-auto sm:top-24 sm:bottom-auto sm:inset-s-3 sm:max-h-[calc(100%-7.5rem)] sm:w-96 sm:rounded-2xl sm:border sm:p-5"
     >
-      <header className="mb-4 flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-lg font-semibold">
-          <Zap className="size-5 text-emerald-600" aria-hidden />
+      <div aria-hidden className="mx-auto mb-2 h-1.5 w-10 rounded-full bg-border sm:hidden" />
+      <header className="mb-4 flex items-center justify-between gap-2">
+        <h2 className="flex items-center gap-2.5 text-lg font-semibold">
+          <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
+            <Zap className="size-4.5 fill-current" aria-hidden />
+          </span>
           {t("reach.title")}
         </h2>
-        <button
-          type="button"
-          onClick={props.onClose}
-          aria-label={t("common.close")}
-          className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-slate-900"
-        >
+        <Button type="button" variant="ghost" size="icon" onClick={props.onClose} aria-label={t("common.close")}>
           <X className="size-5" />
-        </button>
+        </Button>
       </header>
 
       <div className="space-y-4">
@@ -254,7 +257,7 @@ export default function ReachPanel(props: ReachPanelProps) {
           onValueChange={(v) => setVehicleId(v ?? "")}
           items={vehicles?.map((v) => ({ value: v.id, label: v.name })) ?? []}
         >
-          <SelectTrigger className="w-full" aria-label={t("reach.yourCar")}>
+          <SelectTrigger className="h-10 w-full" aria-label={t("reach.yourCar")}>
             <SelectValue placeholder={vehiclesLoading ? t("reach.loadingCars") : t("reach.chooseCar")} />
           </SelectTrigger>
           <SelectContent>
@@ -266,7 +269,7 @@ export default function ReachPanel(props: ReachPanelProps) {
 
         <div>
           <div className="mb-2 flex items-baseline justify-between">
-            <label htmlFor="battery" className="text-sm text-slate-700">{t("reach.battery")}</label>
+            <label htmlFor="battery" className="text-sm font-medium text-muted-foreground">{t("reach.battery")}</label>
             <span className="text-2xl font-semibold tabular-nums" style={{ color: levelColor }} dir="ltr">
               {batteryPercent}%
             </span>
@@ -285,22 +288,22 @@ export default function ReachPanel(props: ReachPanelProps) {
           />
         </div>
 
-        <div className="flex gap-3 rounded-lg border p-3 text-sm">
+        <div className="flex gap-3 rounded-xl border bg-muted/40 p-3 text-sm">
           <div className="flex flex-col items-center pt-1.5" aria-hidden>
-            <span className="size-2.5 rounded-full bg-blue-600" />
-            <span className="my-1 h-9 border-s-2 border-dotted border-slate-300" />
-            <MapPin className={cn("size-4", props.destination ? "text-fuchsia-600" : "text-slate-400")} />
+            <span className="size-2.5 rounded-full bg-blue-600 ring-2 ring-blue-600/25" />
+            <span className="my-1 h-9 border-s-2 border-dotted border-muted-foreground/40" />
+            <MapPin className={cn("size-4", props.destination ? "text-fuchsia-600 dark:text-fuchsia-400" : "text-muted-foreground")} />
           </div>
           <div className="min-w-0 flex-1 space-y-3">
             <div>
-              <p className="text-xs text-slate-500">{t("reach.from")}</p>
+              <p className="text-xs text-muted-foreground">{t("reach.from")}</p>
               <p className="font-medium">{props.originLabel}</p>
               {props.originIsMapCenter && (
-                <p className="text-xs text-slate-500">{t("reach.locateHint")}</p>
+                <p className="text-xs text-muted-foreground">{t("reach.locateHint")}</p>
               )}
             </div>
             <div>
-              <p className="mb-1 text-xs text-slate-500">{t("reach.to")}</p>
+              <p className="mb-1 text-xs text-muted-foreground">{t("reach.to")}</p>
               <PlaceSearch
                 label={t("reach.destination")}
                 value={props.destination}
@@ -313,25 +316,28 @@ export default function ReachPanel(props: ReachPanelProps) {
         </div>
 
         <Button
-          className="w-full"
+          className="h-10 w-full text-base"
           disabled={!vehicleId || props.isPending}
           onClick={() => run({ vehicleId, batteryPercent }, true)}
         >
           {props.isPending ? t("reach.checking") : props.destination ? t("reach.checkTrip") : t("reach.checkRange")}
         </Button>
-        {!vehicleId && <p className="-mt-2 text-center text-xs text-slate-500">{t("reach.chooseCarFirst")}</p>}
+        {!vehicleId && <p className="-mt-2 text-center text-xs text-muted-foreground">{t("reach.chooseCarFirst")}</p>}
 
         {props.error && (
-          <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
+          <p role="alert" className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm">
             {props.error}
           </p>
         )}
 
         {verdict && rangeKm !== undefined && (
           <div aria-live="polite" aria-busy={props.isPending} className={cn("space-y-3", props.isPending && "opacity-60")}>
-            <div className={cn("rounded-lg border p-3", TONE_STYLES[verdict.tone])}>
-              <p className="text-base font-semibold">{verdict.title}</p>
-              <p className="text-sm">{verdict.detail}</p>
+            <div className={cn("flex gap-2.5 rounded-xl border p-3", TONE_STYLES[verdict.tone])}>
+              {VerdictIcon && <VerdictIcon aria-hidden className={cn("mt-0.5 size-5 shrink-0", TONE_ICONS[verdict.tone].className)} />}
+              <div className="min-w-0">
+                <p className="text-base font-semibold">{verdict.title}</p>
+                <p className="text-sm text-muted-foreground">{verdict.detail}</p>
+              </div>
             </div>
 
             {trip && <TripFacts trip={trip} />}
@@ -339,9 +345,9 @@ export default function ReachPanel(props: ReachPanelProps) {
             <TripBar battery={resultBattery} arrival={trip ? trip.batteryOnArrival : null} reserve={reserve} />
 
             {rangeKm > 0 && (
-              <p className="text-sm text-slate-700">
+              <p className="text-sm">
                 {stationLine(trip, reachableCount, t)}
-                {trip && <span className="text-slate-500"> {t("trip.stations.fullRange", { km: number(Math.round(rangeKm)) })}</span>}
+                {trip && <span className="text-muted-foreground"> {t("trip.stations.fullRange", { km: number(Math.round(rangeKm)) })}</span>}
               </p>
             )}
           </div>

@@ -24,7 +24,7 @@ export default function PlaceList({ places, selectedId, onSelect }: PlaceListPro
         return (
           <div key={band}>
             <h3 className="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">{t(`companion.bands.${band}`)}</h3>
-            <ul className="divide-y rounded-xl ring-1 ring-foreground/10">
+            <ul className="divide-y overflow-hidden rounded-xl bg-card ring-1 ring-border">
               {inBand.map((place) => {
                 const { icon: Icon, color } = CATEGORIES[place.category];
                 const isSelected = selectedId === place.id;
@@ -36,13 +36,13 @@ export default function PlaceList({ places, selectedId, onSelect }: PlaceListPro
                       aria-pressed={isSelected}
                       className={cn(
                         "flex w-full items-center gap-3 p-3 text-start transition-colors outline-none hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset",
-                        isSelected && "bg-muted",
+                        isSelected && "bg-primary/10",
                       )}
                     >
                       <Icon aria-hidden="true" className="size-4 shrink-0" style={{ color }} />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">{pickPlaceName(place, lang)}</span>
-                        <span className="block text-xs text-muted-foreground">
+                        <span className="block text-xs text-muted-foreground tabular-nums">
                           {t("companion.walk", { count: place.walkMinutes })} · {t("companion.roundTrip", { count: place.walkMinutes * 2 })}
                         </span>
                       </span>

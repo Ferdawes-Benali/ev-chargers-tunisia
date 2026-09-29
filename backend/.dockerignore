@@ -1,0 +1,13 @@
+# Build output and local state
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+
+# Not part of the API image
+tests/
+
+# Local environment files (secrets)
+**/docker.env
+**/.env
+**/.env.*

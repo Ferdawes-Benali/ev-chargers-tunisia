@@ -33,8 +33,8 @@ export default function SmartPicks({ picks, places, selectedId, onSelect }: Smar
               onClick={() => onSelect(place.id)}
               aria-pressed={isSelected}
               className={cn(
-                "flex h-full w-full items-start gap-3 rounded-xl p-3 text-start ring-1 ring-foreground/10 transition-colors outline-none hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50",
-                isSelected && "bg-muted ring-foreground/30",
+                "flex h-full w-full items-start gap-3 rounded-xl bg-card p-3 text-start shadow-xs ring-1 ring-border transition-colors outline-none hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50",
+                isSelected && "bg-primary/10 ring-2 ring-primary/60 hover:bg-primary/10",
               )}
             >
               <span className="grid size-9 shrink-0 place-items-center rounded-full" style={{ backgroundColor: `${color}1a`, color }}>
@@ -45,7 +45,7 @@ export default function SmartPicks({ picks, places, selectedId, onSelect }: Smar
                   {t(`companion.pickKind.${pick.kind}`)}
                 </span>
                 <span className="block truncate text-sm font-semibold">{pickPlaceName(place, lang)}</span>
-                <span className="block text-xs text-muted-foreground">{t("companion.walk", { count: pick.walkMinutes })}</span>
+                <span className="block text-xs text-muted-foreground tabular-nums">{t("companion.walk", { count: pick.walkMinutes })}</span>
                 <OpenStatusText place={place} className="block" />
               </span>
             </button>

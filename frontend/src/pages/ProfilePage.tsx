@@ -1,25 +1,45 @@
 import { useTranslation } from "react-i18next";
+import { Heart, Mail, TriangleAlert, UserRound } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useFavorites } from "@/hooks/useProfile";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import StationCard from "@/components/StationCard";
 import StationCardSkeleton from "@/components/StationCardSkeleton";
+import SectionCard from "@/components/SectionCard";
+import EmptyState from "@/components/EmptyState";
+import { buttonVariants } from "@/components/ui/button";
 
 export default function ProfilePage() {
   const { t } = useTranslation();
   const { isLoggedIn, loading: authLoading, session } = useAuth();
   const { data: favorites, isLoading, isError } = useFavorites(isLoggedIn);
 
-  if (authLoading) return <div className="p-4">{t("common.loading")}</div>;
+  if (authLoading) return <div className="mx-auto max-w-6xl px-4 py-8 text-muted-foreground">{t("common.loading")}</div>;
   if (!isLoggedIn) return <Navigate to="/login" replace />;
 
-  return (
-    <div className="p-4 space-y-4">
-      <h1 className="text-xl font-bold">{t("profile.title")}</h1>
-      <p dir="ltr" className="text-start">{session?.user.email}</p>
+  const email = session?.user.email;
 
-      <section aria-labelledby="favorites-heading">
-        <h2 id="favorites-heading" className="font-semibold mb-2">{t("profile.favorites")}</h2>
+  return (
+    <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:py-8">
+      <h1 className="text-2xl font-bold tracking-tight">{t("profile.title")}</h1>
+
+      <SectionCard title={t("profile.account")} icon={UserRound}>
+        <div className="flex items-center gap-4">
+          {/* Initial of the email, decorative */}
+          <span aria-hidden="true" className="grid size-12 shrink-0 place-items-center rounded-full bg-primary text-lg font-semibold text-primary-foreground uppercase">
+            {email?.charAt(0)}
+          </span>
+          <dl className="min-w-0">
+            <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <Mail aria-hidden="true" className="size-3.5" />
+              {t("profile.email")}
+            </dt>
+            <dd dir="ltr" className="truncate text-start font-medium">{email}</dd>
+          </dl>
+        </div>
+      </SectionCard>
+
+      <SectionCard title={t("profile.favorites")} titleId="favorites-heading" icon={Heart}>
         {isLoading ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label={t("profile.loading")}>
             {Array.from({ length: 3 }).map((_, i) => (
@@ -27,9 +47,18 @@ export default function ProfilePage() {
             ))}
           </div>
         ) : isError ? (
-          <p className="text-sm text-muted-foreground">{t("profile.loadError")}</p>
+          <EmptyState icon={TriangleAlert} tone="danger" title={t("profile.loadError")} />
         ) : !favorites || favorites.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("profile.noFavorites")}</p>
+          <EmptyState
+            icon={Heart}
+            title={t("profile.noFavoritesTitle")}
+            text={t("profile.noFavorites")}
+            action={
+              <Link to="/stations" className={buttonVariants({ variant: "outline" })}>
+                {t("profile.browse")}
+              </Link>
+            }
+          />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {favorites.map((station) => (
@@ -37,7 +66,7 @@ export default function ProfilePage() {
             ))}
           </div>
         )}
-      </section>
+      </SectionCard>
     </div>
   );
 }

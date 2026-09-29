@@ -112,7 +112,7 @@ export default function PlaceSearch({ value, onSelect, onClear, focus, label, pl
   return (
     <div className="relative">
       <label htmlFor={`${id}-input`} className="sr-only">{label}</label>
-      <Search className="pointer-events-none absolute inset-s-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" aria-hidden />
+      <Search className="pointer-events-none absolute inset-s-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
       <input
         ref={inputRef}
         id={`${id}-input`}
@@ -130,16 +130,16 @@ export default function PlaceSearch({ value, onSelect, onClear, focus, label, pl
         onFocus={() => { if (text && text !== value?.label) setOpen(true); }}
         onBlur={() => setOpen(false)}
         onKeyDown={onKeyDown}
-        className="h-9 w-full rounded-lg border border-input bg-white ps-8 pe-8 text-sm outline-none placeholder:text-slate-400 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        className="h-10 w-full rounded-lg border border-input bg-card ps-8 pe-8 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
       />
       {isFetching && searching && suggestions.length > 0 ? (
-        <LoaderCircle className="absolute inset-e-2.5 top-1/2 size-4 -translate-y-1/2 animate-spin text-slate-400" aria-hidden />
+        <LoaderCircle className="absolute inset-e-2.5 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" aria-hidden />
       ) : text ? (
         <button
           type="button"
           onClick={clear}
           aria-label={t("reach.search.clear")}
-          className="absolute inset-e-1.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-slate-900"
+          className="absolute inset-e-1.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <X className="size-4" />
         </button>
@@ -155,7 +155,7 @@ export default function PlaceSearch({ value, onSelect, onClear, focus, label, pl
           hidden={!expanded}
           style={rect ? { left: rect.left, top: rect.top, width: rect.width } : undefined}
           dir={document.documentElement.dir || "ltr"}
-          className="fixed z-[1100] overflow-hidden rounded-lg bg-white text-sm shadow-lg ring-1 ring-slate-900/10"
+          className="fixed z-[1100] overflow-hidden rounded-lg bg-popover text-sm text-popover-foreground shadow-lg ring-1 ring-border"
           // Keep focus in the input while clicking a suggestion
           onMouseDown={(e) => e.preventDefault()}
         >
@@ -168,14 +168,14 @@ export default function PlaceSearch({ value, onSelect, onClear, focus, label, pl
                 aria-selected={i === activeIndex}
                 onClick={() => select(place)}
                 onMouseMove={() => setActiveIndex(i)}
-                className={cn("flex cursor-pointer items-start gap-2 px-3 py-2", i === activeIndex && "bg-slate-100")}
+                className={cn("flex cursor-pointer items-start gap-2 px-3 py-2", i === activeIndex && "bg-muted")}
               >
-                <MapPin className="mt-0.5 size-4 shrink-0 text-slate-400" aria-hidden />
+                <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
                 <span>{place.label}</span>
               </li>
             ))}
           </ul>
-          {status && <p className="px-3 py-2 text-slate-500">{status}</p>}
+          {status && <p className="px-3 py-2 text-muted-foreground">{status}</p>}
         </div>,
         document.body
       )}
