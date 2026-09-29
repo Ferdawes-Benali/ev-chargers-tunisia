@@ -1,8 +1,9 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using EvChargers.Application.Email;
 
 namespace EvChargers.Infrastructure.Email;
@@ -12,17 +13,28 @@ public class ResendEmailSender : IEmailSender
     private readonly HttpClient _http;
     private readonly ILogger<ResendEmailSender> _logger;
     private readonly string? _apiKey;
-    private readonly string _from;
+    private readonly string? _from;
     private readonly string? _devRedirectTo;
 
-    public ResendEmailSender(HttpClient http, IConfiguration config, ILogger<ResendEmailSender> logger)
+    public ResendEmailSender(
+        HttpClient http,
+        IOptions<EmailOptions> emailOptions,
+        IOptions<ResendOptions> resendOptions,
+        IHostEnvironment environment,
+        ILogger<ResendEmailSender> logger)
     {
         _http = http;
         _logger = logger;
-        _apiKey = config["ResendApiKey"];
-        _from = config["EmailFrom"] ?? "EV Chargers Tunisia <onboarding@resend.dev>";
-        // Resend test mode only delivers to the account owner, so redirect development emails.
-        _devRedirectTo = string.IsNullOrWhiteSpace(config["EmailDevRedirectTo"]) ? null : config["EmailDevRedirectTo"]!.Trim();
+        var email = emailOptions.Value;
+        _apiKey = resendOptions.Value.ApiKey;
+        _from = string.IsNullOrWhiteSpace(email.FromAddress) ? null
+            : string.IsNullOrWhiteSpace(email.FromName) ? email.FromAddress.Trim()
+            : $"{email.FromName.Trim()} <{email.FromAddress.Trim()}>";
+        // Resend test mode only delivers to the account owner, so redirect emails, but only in Development:
+        // anywhere else real users must receive their own emails.
+        _devRedirectTo = environment.IsDevelopment() && !string.IsNullOrWhiteSpace(email.DevRedirectTo)
+            ? email.DevRedirectTo.Trim()
+            : null;
         _http.BaseAddress = new Uri("https://api.resend.com/");
     }
 
@@ -31,6 +43,12 @@ public class ResendEmailSender : IEmailSender
         if (string.IsNullOrEmpty(_apiKey))
         {
             _logger.LogWarning("Resend API key not configured; email not sent.");
+            return EmailSendResult.PermanentFailure;
+        }
+        if (_from is null)
+        {
+            // Unreachable outside Development (startup validation), kept as a safety net
+            _logger.LogWarning("Email sender address not configured; email not sent.");
             return EmailSendResult.PermanentFailure;
         }
 
