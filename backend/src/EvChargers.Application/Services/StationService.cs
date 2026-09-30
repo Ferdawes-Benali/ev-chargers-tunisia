@@ -16,15 +16,17 @@ public class StationService : IStationService
     private readonly IUserRepository _users;
     private readonly IAuditLogRepository _auditLog;
     private readonly IEmailQueue _emailQueue;
+    private readonly IPlacesRefreshQueue _placesRefresh;
     private readonly ILogger<StationService> _logger;
 
     public StationService(IStationRepository stations, IUserRepository users, IAuditLogRepository auditLog,
-        IEmailQueue emailQueue, ILogger<StationService> logger)
+        IEmailQueue emailQueue, IPlacesRefreshQueue placesRefresh, ILogger<StationService> logger)
     {
         _stations = stations;
         _users = users;
         _auditLog = auditLog;
         _emailQueue = emailQueue;
+        _placesRefresh = placesRefresh;
         _logger = logger;
     }
 
@@ -99,6 +101,8 @@ public class StationService : IStationService
         station.Status = StationStatus.Verified;
         await _stations.UpdateAsync(station, ct);
         await LogAdminActionAsync(userId, "VerifyStation", id, ct);
+        // Newly visible on the map: have its nearby places ready before the first driver asks
+        _placesRefresh.Request(id);
         return OperationResult.Ok;
     }
 

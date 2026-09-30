@@ -22,6 +22,7 @@ public class StationServiceTests
     private readonly Mock<IUserRepository> _users = new();
     private readonly Mock<IAuditLogRepository> _auditLog = new();
     private readonly Mock<IEmailQueue> _emailQueue = new();
+    private readonly Mock<IPlacesRefreshQueue> _placesRefresh = new();
     private readonly StationService _service;
     private readonly Station _station;
 
@@ -45,7 +46,7 @@ public class StationServiceTests
             .ReturnsAsync(new AppUser { Id = Stranger, IsAdmin = false, Email = "stranger@example.com", DisplayName = "Sami", PreferredLanguage = "en" });
 
         _service = new StationService(_stations.Object, _users.Object, _auditLog.Object,
-            _emailQueue.Object, NullLogger<StationService>.Instance);
+            _emailQueue.Object, _placesRefresh.Object, NullLogger<StationService>.Instance);
     }
 
     // --- Update: submitter or admin ---
@@ -119,6 +120,7 @@ public class StationServiceTests
         result.Should().Be(OperationResult.Forbidden);
         _stations.Verify(r => r.UpdateAsync(It.IsAny<Station>(), It.IsAny<CancellationToken>()), Times.Never);
         _auditLog.Verify(r => r.LogAsync(It.IsAny<AuditLog>(), It.IsAny<CancellationToken>()), Times.Never);
+        _placesRefresh.VerifyNoOtherCalls();
     }
 
     [Fact]
@@ -130,6 +132,14 @@ public class StationServiceTests
         _auditLog.Verify(r => r.LogAsync(
             It.Is<AuditLog>(a => a.UserId == Admin && a.Action == "VerifyStation" && a.TargetId == _station.Id),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Admin_verify_queues_the_nearby_places_fetch()
+    {
+        await _service.VerifyAsync(_station.Id, Admin, CancellationToken.None);
+
+        _placesRefresh.Verify(q => q.Request(_station.Id), Times.Once);
     }
 
     [Fact]

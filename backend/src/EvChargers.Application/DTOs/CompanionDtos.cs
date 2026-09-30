@@ -23,10 +23,23 @@ public record CompanionPlaceDto(string Id, string Name, PlaceNames Names, string
 /// <param name="Kind">"coffee", "lunch", "dinner", "pray" or "walk" (see PickKinds); the frontend translates it.</param>
 public record CompanionPickDto(string Kind, string PlaceId, int WalkMinutes);
 
+/// <summary>Values of <see cref="CompanionResultDto.Status"/>.</summary>
+public static class CompanionStatuses
+{
+    public const string Ready = "ready";
+    /// <summary>No places stored yet; the background warmup has been asked to fetch them.</summary>
+    public const string Preparing = "preparing";
+    /// <summary>Every fetch so far failed and there are no places at all.</summary>
+    public const string Unavailable = "unavailable";
+}
+
 /// <param name="BackBy">Local "HH:mm" when the car should be ready; null without a charge time.</param>
+/// <param name="Status">"ready", "preparing" or "unavailable" (see <see cref="CompanionStatuses"/>).</param>
+/// <param name="FetchedAt">When the places were fetched from OpenStreetMap (UTC); null without places.</param>
 public record CompanionResultDto(int? ChargeMinutes, int? MaxPowerKw, string? BackBy,
                                  List<CompanionPickDto> Picks, List<CompanionPlaceDto> Places,
-                                 string Source, bool Unavailable);
+                                 string Source, bool Unavailable,
+                                 string Status = CompanionStatuses.Ready, DateTime? FetchedAt = null);
 
 /// <param name="Points">Walking path as [lat, lng]; empty when <paramref name="Estimated"/>.</param>
 /// <param name="Estimated">True when routing was unavailable and the numbers come from straight-line distance.</param>

@@ -140,7 +140,7 @@ public class OverpassParsingTests
     {
         var query = OverpassPlacesProvider.BuildQuery(36.8065, 10.1815, 960);
 
-        query.Should().Contain("[out:json][timeout:15]")
+        query.Should().Contain("[out:json][timeout:25]")
             .And.Contain("nwr(around:960,36.8065,10.1815)")
             .And.Contain("\"religion\"=\"muslim\"")
             .And.Contain("out center tags;");
