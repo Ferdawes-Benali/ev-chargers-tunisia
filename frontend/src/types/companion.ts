@@ -63,7 +63,13 @@ export interface CompanionResult {
   source: string;
   /** true when OpenStreetMap could not be reached; places is then empty. */
   unavailable: boolean;
+  /** "preparing": places are being fetched in the background; places is empty for now. */
+  status: CompanionStatus;
+  /** ISO time the places were fetched from OpenStreetMap; null without places. */
+  fetchedAt: string | null;
 }
+
+export type CompanionStatus = "ready" | "preparing" | "unavailable";
 
 export interface WalkingRoute {
   distanceMeters: number;

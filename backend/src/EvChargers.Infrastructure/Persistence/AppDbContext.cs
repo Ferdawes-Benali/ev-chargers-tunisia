@@ -15,6 +15,7 @@ public class AppDbContext : DbContext
     public DbSet<Vehicle> Vehicles => Set<Vehicle>();
     public DbSet<AppUser> AppUsers => Set<AppUser>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<PlacesCacheEntry> PlacesCache => Set<PlacesCacheEntry>();
     protected override void OnModelCreating(ModelBuilder b)
     {
         b.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);

@@ -153,6 +153,8 @@
     "shortWalk": "Places within a short walk",
     "loading": "Loading nearby places",
     "unavailable": "Nearby places are unavailable right now.",
+    "preparing": "Finding places near this charger… check back in a minute.",
+    "refresh": "Refresh",
     "empty": "Nothing within walking distance — a good moment for a coffee in the car ☕",
     "credit": "Places ©",
     "creditLink": "OpenStreetMap contributors",

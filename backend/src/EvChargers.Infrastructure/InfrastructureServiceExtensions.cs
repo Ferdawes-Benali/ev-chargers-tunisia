@@ -28,7 +28,24 @@ public static class InfrastructureServiceExtensions
         services.AddHttpClient<Application.Interfaces.IWeatherProvider, External.OpenMeteoWeatherProvider>();
         services.AddHttpClient<Application.Interfaces.IPlacesProvider, External.OverpassPlacesProvider>();
 
+        services.AddCompanionWarmup();
+
         services.AddEmailServices();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Companion places: stored per station, refreshed in the background (one shared queue, one worker),
+    /// so requests only read the database.
+    /// </summary>
+    public static IServiceCollection AddCompanionWarmup(this IServiceCollection services)
+    {
+        services.AddScoped<Application.Interfaces.IPlacesCacheRepository, Persistence.EfPlacesCacheRepository>();
+        services.AddScoped<Application.Interfaces.IPlacesCacheRefresher, Application.Services.PlacesCacheRefresher>();
+        services.AddSingleton<Companion.ChannelPlacesRefreshQueue>();
+        services.AddSingleton<Application.Interfaces.IPlacesRefreshQueue>(sp => sp.GetRequiredService<Companion.ChannelPlacesRefreshQueue>());
+        services.AddHostedService<Companion.CompanionWarmupService>();
 
         return services;
     }

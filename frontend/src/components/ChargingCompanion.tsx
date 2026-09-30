@@ -18,7 +18,7 @@ import type { StationDetail } from "@/types/station";
 export default function ChargingCompanion({ station }: { station: StationDetail }) {
   const { t } = useTranslation();
   const { number } = useLocale();
-  const { data, isLoading, isError } = useCompanion(station.id);
+  const { data, isLoading, isError, isFetching, refetch } = useCompanion(station.id);
   const [filter, setFilter] = useState<PlaceGroup | "all">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Where focus was before the place card opened, to give it back on close
@@ -106,6 +106,13 @@ export default function ChargingCompanion({ station }: { station: StationDetail 
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
         </div>
+      ) : data?.status === "preparing" ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-sm text-muted-foreground" role="status">{t("companion.preparing")}</p>
+          <Button size="sm" variant="outline" disabled={isFetching} onClick={() => void refetch()}>
+            {t("companion.refresh")}
+          </Button>
+        </div>
       ) : isError || data?.unavailable ? (
         <p className="text-sm text-muted-foreground">{t("companion.unavailable")}</p>
       ) : places.length === 0 ? (
@@ -162,7 +169,7 @@ export default function ChargingCompanion({ station }: { station: StationDetail 
         </>
       )}
 
-      {data && !data.unavailable && (
+      {data && !data.unavailable && data.status !== "preparing" && (
         <p className="text-xs text-muted-foreground">
           {t("companion.credit")}{" "}
           <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="rounded-sm text-accent-ink underline underline-offset-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
