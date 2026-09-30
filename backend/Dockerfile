@@ -29,7 +29,12 @@ EXPOSE 8080
 
 COPY --from=build /app/publish .
 
+# Security: install the patched OpenSSL (CVE-2026-84782) until Microsoft
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends --only-upgrade openssl libssl3t64 \
+ && rm -rf /var/lib/apt/lists/*
 # Non-root user provided by the .NET base images
 USER $APP_UID
 
 ENTRYPOINT ["dotnet", "EvChargers.API.dll"]
+
