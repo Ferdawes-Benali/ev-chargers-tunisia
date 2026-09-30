@@ -163,6 +163,8 @@
     "shortWalk": "Lieux à quelques pas",
     "loading": "Chargement des lieux à proximité",
     "unavailable": "Les lieux à proximité sont indisponibles pour le moment.",
+    "preparing": "Recherche des lieux autour de cette borne… revenez dans une minute.",
+    "refresh": "Actualiser",
     "empty": "Rien à distance de marche — l'occasion d'un café dans la voiture ☕",
     "credit": "Lieux ©",
     "creditLink": "contributeurs OpenStreetMap",

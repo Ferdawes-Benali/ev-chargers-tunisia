@@ -249,8 +249,11 @@ public class CompanionServiceTests
         public override DateTimeOffset GetUtcNow() => now;
     }
 
+    private static readonly DateTime Now = new(2026, 9, 29, 11, 0, 0, DateTimeKind.Utc);
+
     private readonly Mock<IStationRepository> _stations = new();
-    private readonly Mock<IPlacesProvider> _places = new();
+    private readonly Mock<IPlacesCacheRepository> _cache = new();
+    private readonly Mock<IPlacesRefreshQueue> _refreshQueue = new();
     private readonly Mock<IRoutingProvider> _routing = new();
     private readonly CompanionService _service;
     private readonly Station _station = new()
@@ -267,18 +270,21 @@ public class CompanionServiceTests
     {
         _stations.Setup(r => r.GetByIdAsync(_station.Id, It.IsAny<CancellationToken>())).ReturnsAsync(_station);
         // 11:00 UTC = 12:00 in Tunis
-        _service = new CompanionService(_stations.Object, _places.Object, _routing.Object,
-                                        new FixedClock(new DateTimeOffset(2026, 9, 29, 11, 0, 0, TimeSpan.Zero)));
+        _service = new CompanionService(_stations.Object, _cache.Object, _refreshQueue.Object, _routing.Object,
+                                        new FixedClock(new DateTimeOffset(Now)));
     }
 
-    private void GivenPlaces(List<RawPlace>? places) =>
-        _places.Setup(p => p.GetNearbyAsync(It.IsAny<double>(), It.IsAny<double>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(places);
+    private void GivenCache(PlacesCacheSnapshot? entry) =>
+        _cache.Setup(c => c.GetAsync(_station.Id, It.IsAny<CancellationToken>())).ReturnsAsync(entry);
+
+    private void GivenPlaces(List<RawPlace> places, DateTime? fetchedAt = null) =>
+        GivenCache(new PlacesCacheSnapshot(places, fetchedAt ?? Now.AddHours(-2), fetchedAt ?? Now.AddHours(-2), null));
 
     [Fact]
     public async Task Uses_the_most_powerful_connector_and_local_time()
     {
-        GivenPlaces([Cafe]);
+        var fetchedAt = Now.AddHours(-3);
+        GivenPlaces([Cafe], fetchedAt);
 
         var result = (await _service.GetAsync(_station.Id, CancellationToken.None))!;
 
@@ -286,28 +292,115 @@ public class CompanionServiceTests
         result.ChargeMinutes.Should().Be(60);
         result.BackBy.Should().Be("13:00");
         result.Unavailable.Should().BeFalse();
+        result.Status.Should().Be(CompanionStatuses.Ready);
+        result.FetchedAt.Should().Be(fetchedAt);
         result.Source.Should().Be("OpenStreetMap");
         result.Places.Should().ContainSingle(p => p.Id == "node/42" && p.OpenStatus == "open");
         result.Picks.Should().ContainSingle(p => p.Kind == "coffee" && p.PlaceId == "node/42");
-        // 30 min each way → 1920 m, capped at 1500
-        _places.Verify(p => p.GetNearbyAsync(36.8065, 10.1815, 1500, It.IsAny<CancellationToken>()), Times.Once);
+        _refreshQueue.VerifyNoOtherCalls();
     }
 
     [Fact]
-    public async Task Provider_failure_gives_unavailable_with_no_places()
+    public async Task No_cache_yet_answers_preparing_at_once_and_queues_the_station()
     {
-        GivenPlaces(null);
+        GivenCache(null);
 
         var result = (await _service.GetAsync(_station.Id, CancellationToken.None))!;
 
-        result.Unavailable.Should().BeTrue();
+        result.Status.Should().Be(CompanionStatuses.Preparing);
+        result.Unavailable.Should().BeFalse();
         result.Places.Should().BeEmpty();
         result.Picks.Should().BeEmpty();
+        result.FetchedAt.Should().BeNull();
         result.BackBy.Should().Be("13:00");
+        _refreshQueue.Verify(q => q.Request(_station.Id), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task Failed_fetch_with_no_data_stays_preparing_while_retries_are_pending(int failures)
+    {
+        GivenCache(new PlacesCacheSnapshot(null, null, Now.AddMinutes(-5), "timed out", failures));
+
+        var result = (await _service.GetAsync(_station.Id, CancellationToken.None))!;
+
+        result.Status.Should().Be(CompanionStatuses.Preparing);
+        result.Unavailable.Should().BeFalse();
+        result.Places.Should().BeEmpty();
+        // Tried 5 minutes ago: the retry is not due yet
+        _refreshQueue.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData(3)]
+    [InlineData(10)]
+    public async Task Three_failures_in_a_row_with_no_data_give_unavailable(int failures)
+    {
+        GivenCache(new PlacesCacheSnapshot(null, null, Now.AddMinutes(-5), "timed out", failures));
+
+        var result = (await _service.GetAsync(_station.Id, CancellationToken.None))!;
+
+        result.Status.Should().Be(CompanionStatuses.Unavailable);
+        result.Unavailable.Should().BeTrue();
+        result.Places.Should().BeEmpty();
+        _refreshQueue.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData(1, 29, false)]
+    [InlineData(1, 30, true)]
+    [InlineData(3, 119, false)]   // third failure: 2 h backoff, even for a visit
+    [InlineData(3, 120, true)]
+    [InlineData(8, 23 * 60, false)]
+    [InlineData(8, 24 * 60, true)]
+    public async Task Visit_queues_a_failed_station_only_after_its_backoff_delay(int failures, int minutesSinceAttempt, bool queued)
+    {
+        GivenCache(new PlacesCacheSnapshot(null, null, Now.AddMinutes(-minutesSinceAttempt), "timed out", failures));
+
+        await _service.GetAsync(_station.Id, CancellationToken.None);
+
+        _refreshQueue.Verify(q => q.Request(_station.Id), queued ? Times.Once() : Times.Never());
     }
 
     [Fact]
-    public async Task Station_without_connectors_uses_the_15_minute_walk()
+    public async Task Valid_empty_result_is_ready_with_no_places()
+    {
+        GivenPlaces([]);
+
+        var result = (await _service.GetAsync(_station.Id, CancellationToken.None))!;
+
+        result.Status.Should().Be(CompanionStatuses.Ready);
+        result.Unavailable.Should().BeFalse();
+        result.Places.Should().BeEmpty();
+        _refreshQueue.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Failed_refresh_with_older_places_still_serves_them()
+    {
+        GivenCache(new PlacesCacheSnapshot([Cafe], Now.AddDays(-3), Now.AddMinutes(-1), "timed out"));
+
+        var result = (await _service.GetAsync(_station.Id, CancellationToken.None))!;
+
+        result.Unavailable.Should().BeFalse();
+        result.Status.Should().Be(CompanionStatuses.Ready);
+        result.Places.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void Never_calls_the_places_provider_during_a_request()
+    {
+        // Structural guarantee: the service can only read the stored cache, never reach Overpass
+        typeof(CompanionService).GetConstructors()
+            .SelectMany(c => c.GetParameters())
+            .Should().NotContain(p => p.ParameterType == typeof(IPlacesProvider));
+        typeof(CompanionService).GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            .Should().NotContain(f => f.FieldType == typeof(IPlacesProvider));
+    }
+
+    [Fact]
+    public async Task Station_without_connectors_has_no_charge_time()
     {
         _station.Connectors.Clear();
         GivenPlaces([]);
@@ -317,7 +410,6 @@ public class CompanionServiceTests
         result.ChargeMinutes.Should().BeNull();
         result.MaxPowerKw.Should().BeNull();
         result.BackBy.Should().BeNull();
-        _places.Verify(p => p.GetNearbyAsync(It.IsAny<double>(), It.IsAny<double>(), 960, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -325,6 +417,7 @@ public class CompanionServiceTests
     {
         (await _service.GetAsync(Guid.NewGuid(), CancellationToken.None)).Should().BeNull();
         (await _service.GetWalkingRouteAsync(Guid.NewGuid(), "node/42", CancellationToken.None)).Should().BeNull();
+        _refreshQueue.VerifyNoOtherCalls();
     }
 
     // --- Walking route ---
@@ -367,6 +460,15 @@ public class CompanionServiceTests
         GivenPlaces([Cafe]);
 
         (await _service.GetWalkingRouteAsync(_station.Id, "node/999", CancellationToken.None)).Should().BeNull();
+        _routing.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Route_without_stored_places_gives_null()
+    {
+        GivenCache(null);
+
+        (await _service.GetWalkingRouteAsync(_station.Id, "node/42", CancellationToken.None)).Should().BeNull();
         _routing.VerifyNoOtherCalls();
     }
 }

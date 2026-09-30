@@ -262,3 +262,58 @@ public class ApiRateLimitingTests
         body.RootElement.GetProperty("detail").GetString().Should().Be("Too many requests, please try again in a minute.");
     }
 }
+
+public class LoggingConfigurationTests
+{
+    /// <summary>The logger Program.cs builds from appsettings.json (Serilog replaces the default logging filters).</summary>
+    private static Serilog.ILogger AppLogger()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "src", "EvChargers.API", "appsettings.json")))
+            dir = dir.Parent;
+        dir.Should().NotBeNull("the tests run inside the backend folder");
+
+        var configuration = new ConfigurationBuilder()
+            .AddJsonFile(Path.Combine(dir!.FullName, "src", "EvChargers.API", "appsettings.json"))
+            .Build();
+        // Called statically: a "using Serilog;" would clash with Microsoft.Extensions names in this file
+        return Serilog.ConfigurationLoggerConfigurationExtensions
+            .Configuration(new Serilog.LoggerConfiguration().ReadFrom, configuration).CreateLogger();
+    }
+
+    [Theory]
+    [InlineData("Microsoft.AspNetCore.Hosting.Diagnostics", false)]
+    [InlineData("System.Net.Http.HttpClient.IPlacesProvider.LogicalHandler", false)]
+    [InlineData("EvChargers.Infrastructure.Companion.CompanionWarmupService", true)]
+    [InlineData("Serilog.AspNetCore.RequestLoggingMiddleware", true)]
+    public void Framework_noise_is_warning_only_and_app_logs_stay_at_information(string source, bool informationLogged) =>
+        AppLogger().ForContext(Serilog.Core.Constants.SourceContextPropertyName, source)
+            .IsEnabled(Serilog.Events.LogEventLevel.Information).Should().Be(informationLogged);
+
+    [Theory]
+    [InlineData("/health")]
+    [InlineData("/health/ready")]
+    public void Successful_health_probes_are_not_logged(string path)
+    {
+        var options = new Serilog.AspNetCore.RequestLoggingOptions();
+        HostingExtensions.ConfigureRequestLogging(options);
+        var context = new DefaultHttpContext();
+        context.Request.Path = path;
+        context.Response.StatusCode = 200;
+
+        var level = options.GetLevel(context, 1.0, null);
+
+        AppLogger().IsEnabled(level).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Api_requests_are_still_logged()
+    {
+        var options = new Serilog.AspNetCore.RequestLoggingOptions();
+        HostingExtensions.ConfigureRequestLogging(options);
+        var context = new DefaultHttpContext();
+        context.Request.Path = "/api/v1/stations";
+
+        AppLogger().IsEnabled(options.GetLevel(context, 1.0, null)).Should().BeTrue();
+    }
+}

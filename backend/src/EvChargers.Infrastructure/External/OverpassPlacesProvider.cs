@@ -11,12 +11,19 @@ namespace EvChargers.Infrastructure.External;
 
 /// <summary>
 /// Nearby places from OpenStreetMap through the public Overpass API.
-/// The shared server is often busy, so: one retry on 429/504, then a mirror, then yesterday's copy.
+/// The shared servers are often busy or unreachable from cloud hosts, so: the main server (one retry on 429/504),
+/// then two mirrors, each attempt capped at <see cref="AttemptTimeout"/>, then the last copy kept in memory.
+/// An HTTP 200 whose "remark" reports a server error (query timed out, out of memory) is a failure too, never an empty result.
+/// Called only by the background warmup (PlacesCacheRefresher), never during a request, so the long timeouts cost users nothing.
 /// </summary>
 public partial class OverpassPlacesProvider : IPlacesProvider
 {
     public const string MainUrl = "https://overpass-api.de/api/interpreter";
     public const string MirrorUrl = "https://overpass.kumi.systems/api/interpreter";
+    public const string SecondMirrorUrl = "https://overpass.private.coffee/api/interpreter";
+
+    /// <summary>Tried in this order.</summary>
+    public static readonly IReadOnlyList<string> ServerUrls = [MainUrl, MirrorUrl, SecondMirrorUrl];
 
     // POIs change slowly: refresh daily, but a week-old list beats "unavailable"
     public static readonly TimeSpan FreshFor = TimeSpan.FromHours(24);
@@ -24,6 +31,9 @@ public partial class OverpassPlacesProvider : IPlacesProvider
 
     private const double DuplicateMeters = 20;
     private const int MaxLoggedBodyLength = 500;
+    private const int MaxLoggedRemarkLength = 200;
+    /// <summary>Server-side time limit written into the query; <see cref="AttemptTimeout"/> stays a little above it.</summary>
+    public const int QueryTimeoutSeconds = 25;
 
     private static readonly Dictionary<string, string> GenericNames = new()
     {
@@ -43,6 +53,8 @@ public partial class OverpassPlacesProvider : IPlacesProvider
 
     /// <summary>Delay before retrying a busy (429/504) server.</summary>
     public TimeSpan RetryDelay { get; init; } = TimeSpan.FromSeconds(1.5);
+    /// <summary>Each request (one server, one try) is abandoned after this long, and the next server is tried.</summary>
+    public TimeSpan AttemptTimeout { get; init; } = TimeSpan.FromSeconds(30);
     /// <summary>Decides when a cached copy is stale. Settable for tests.</summary>
     public TimeProvider Clock { get; init; } = TimeProvider.System;
 
@@ -53,7 +65,8 @@ public partial class OverpassPlacesProvider : IPlacesProvider
         _http = http;
         _cache = cache;
         _logger = logger;
-        _http.Timeout = TimeSpan.FromSeconds(20);
+        // Timeouts are per attempt (AttemptTimeout), not one budget for the whole server chain
+        _http.Timeout = Timeout.InfiniteTimeSpan;
         // Overpass usage policy: identify the application
         _http.DefaultRequestHeaders.UserAgent.ParseAdd("EVChargersTunisia/1.0 (internship project)");
     }
@@ -69,7 +82,8 @@ public partial class OverpassPlacesProvider : IPlacesProvider
         var fresh = await FetchAsync(BuildQuery(lat, lng, radiusMeters), ct);
         if (fresh is not null)
         {
-            _cache.Set(cacheKey, new CachedPlaces(fresh, now), KeepFor);
+            // An empty list is not kept: the warmup rechecks empty stations sooner and must reach the server
+            if (fresh.Count > 0) _cache.Set(cacheKey, new CachedPlaces(fresh, now), KeepFor);
             return fresh;
         }
 
@@ -81,24 +95,26 @@ public partial class OverpassPlacesProvider : IPlacesProvider
         return null;
     }
 
-    /// <summary>Queries the main server, retries once if busy, and then tries the mirror. Returns null if all requests fail.</summary>
+    /// <summary>Queries the main server, retries it once if busy, then each mirror in turn. Returns null if all requests fail.</summary>
     private async Task<List<RawPlace>?> FetchAsync(string query, CancellationToken ct)
     {
         try
         {
-            var (places, status) = await TryServerAsync(MainUrl, query, ct);
-            if (places is not null) return places;
-
-            if (status is HttpStatusCode.TooManyRequests or HttpStatusCode.GatewayTimeout)
+            foreach (var url in ServerUrls)
             {
-                await Task.Delay(RetryDelay, ct);
-                (places, _) = await TryServerAsync(MainUrl, query, ct);
+                ct.ThrowIfCancellationRequested();
+                var (places, status) = await TryServerAsync(url, query, ct);
                 if (places is not null) return places;
-            }
 
-            ct.ThrowIfCancellationRequested();
-            (places, _) = await TryServerAsync(MirrorUrl, query, ct);
-            return places;
+                // Only the main server gets a second chance: a busy mirror is better skipped
+                if (url == MainUrl && status is HttpStatusCode.TooManyRequests or HttpStatusCode.GatewayTimeout)
+                {
+                    await Task.Delay(RetryDelay, ct);
+                    (places, _) = await TryServerAsync(url, query, ct);
+                    if (places is not null) return places;
+                }
+            }
+            return null;
         }
         catch (Exception) when (ct.IsCancellationRequested)
         {
@@ -106,10 +122,16 @@ public partial class OverpassPlacesProvider : IPlacesProvider
         }
     }
 
-    /// <summary>One request. Returns the places, or null plus the HTTP status (null status = network error/timeout).</summary>
-    private async Task<(List<RawPlace>? Places, HttpStatusCode? Status)> TryServerAsync(string url, string query, CancellationToken ct)
+    /// <summary>
+    /// One request. Returns the places, or null plus the HTTP status (null status = network error, timeout, or an
+    /// error reported in the "remark" field of a 200 answer).
+    /// </summary>
+    private async Task<(List<RawPlace>? Places, HttpStatusCode? Status)> TryServerAsync(string url, string query, CancellationToken callerCt)
     {
         var server = new Uri(url).Host;
+        using var attempt = CancellationTokenSource.CreateLinkedTokenSource(callerCt);
+        attempt.CancelAfter(AttemptTimeout);
+        var ct = attempt.Token;
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, url)
@@ -127,12 +149,24 @@ public partial class OverpassPlacesProvider : IPlacesProvider
 
             await using var stream = await response.Content.ReadAsStreamAsync(ct);
             using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+            var remark = Remark(doc.RootElement);
+            if (IsErrorRemark(remark))
+            {
+                // e.g. "runtime error: Query timed out in "query" at line 3": elements are missing or partial, not "nothing nearby"
+                if (remark!.Length > MaxLoggedRemarkLength) remark = remark[..MaxLoggedRemarkLength] + "…";
+                _logger.LogWarning("Overpass request to {Server} returned an error remark: {Remark}", server, remark);
+                return (null, null);
+            }
             return (Parse(doc.RootElement), response.StatusCode);
         }
-        catch (Exception ex) when (!ct.IsCancellationRequested)
+        catch (OperationCanceledException) when (!callerCt.IsCancellationRequested)
         {
-            // Includes the 20 s HttpClient timeout (TaskCanceledException without our token cancelled)
-            _logger.LogWarning(ex, "Overpass request to {Server} failed or timed out", server);
+            _logger.LogWarning("Overpass request to {Server} timed out after {Seconds} s", server, AttemptTimeout.TotalSeconds);
+            return (null, null);
+        }
+        catch (Exception ex) when (!callerCt.IsCancellationRequested)
+        {
+            _logger.LogWarning(ex, "Overpass request to {Server} failed", server);
             return (null, null);
         }
     }
@@ -145,7 +179,7 @@ public partial class OverpassPlacesProvider : IPlacesProvider
     {
         var around = FormattableString.Invariant($"around:{radiusMeters},{lat},{lng}");
         return $"""
-            [out:json][timeout:15];
+            [out:json][timeout:{QueryTimeoutSeconds}];
             (
               nwr({around})["amenity"~"^(cafe|restaurant|fast_food|pharmacy|toilets|atm|bank)$"];
               nwr({around})["amenity"="place_of_worship"]["religion"="muslim"];
@@ -155,6 +189,18 @@ public partial class OverpassPlacesProvider : IPlacesProvider
             out center tags;
             """;
     }
+
+    /// <summary>The optional top-level "remark" Overpass adds when something went wrong on its side.</summary>
+    public static string? Remark(JsonElement root) =>
+        root.ValueKind == JsonValueKind.Object && root.TryGetProperty("remark", out var remark) && remark.ValueKind == JsonValueKind.String
+            ? remark.GetString()
+            : null;
+
+    /// <summary>True when the remark reports a failed query (runtime error, timeout, out of memory).</summary>
+    public static bool IsErrorRemark(string? remark) =>
+        remark is not null && ErrorRemarkWords.Any(w => remark.Contains(w, StringComparison.OrdinalIgnoreCase));
+
+    private static readonly string[] ErrorRemarkWords = ["error", "timed out", "timeout", "out of memory"];
 
     /// <summary>Turns an Overpass JSON response into places. Elements without a position or a known category are skipped.</summary>
     public static List<RawPlace> Parse(JsonElement root)

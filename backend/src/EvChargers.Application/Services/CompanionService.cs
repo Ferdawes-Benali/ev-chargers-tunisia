@@ -11,15 +11,23 @@ public class CompanionService : ICompanionService
     /// <summary>Maximum number of points used to display walking routes on the map.</summary>
     public const int MaxRoutePoints = 200;
 
+    /// <summary>With nothing stored, "preparing" turns into "unavailable" after this many failed attempts in a row.</summary>
+    public const int UnavailableAfterFailures = 3;
+
     private readonly IStationRepository _stations;
-    private readonly IPlacesProvider _places;
+    private readonly IPlacesCacheRepository _cache;
+    private readonly IPlacesRefreshQueue _refreshQueue;
     private readonly IRoutingProvider _routing;
     private readonly TimeProvider _clock;
 
-    public CompanionService(IStationRepository stations, IPlacesProvider places, IRoutingProvider routing, TimeProvider clock)
+    // No IPlacesProvider on purpose: places come only from the stored cache, filled in the background
+    // (PlacesCacheRefresher), so a response never waits on Overpass.
+    public CompanionService(IStationRepository stations, IPlacesCacheRepository cache, IPlacesRefreshQueue refreshQueue,
+        IRoutingProvider routing, TimeProvider clock)
     {
         _stations = stations;
-        _places = places;
+        _cache = cache;
+        _refreshQueue = refreshQueue;
         _routing = routing;
         _clock = clock;
     }
@@ -33,13 +41,28 @@ public class CompanionService : ICompanionService
         var localNow = TunisiaTime.ToLocal(_clock.GetUtcNow());
         var backBy = Companion.BackBy(localNow, chargeMinutes);
 
-        var raw = await NearbyAsync(station, chargeMinutes, ct);
-        if (raw is null)
-            return new CompanionResultDto(chargeMinutes, maxPowerKw, backBy, [], [], Source, Unavailable: true);
+        var cached = await _cache.GetAsync(stationId, ct);
+        if (cached?.Places is null)
+        {
+            // Failed before with nothing stored: still "preparing" while retries are pending, "unavailable" after
+            // several failures in a row. Either way, ask again once the backoff delay has passed (same as the warmup).
+            if (cached?.LastError is not null)
+            {
+                if (_clock.GetUtcNow().UtcDateTime - cached.LastAttemptAt >= PlacesWarmup.RetryDelay(cached.AttemptCount))
+                    _refreshQueue.Request(stationId);
+                var unavailable = cached.AttemptCount >= UnavailableAfterFailures;
+                return new CompanionResultDto(chargeMinutes, maxPowerKw, backBy, [], [], Source, Unavailable: unavailable,
+                                              unavailable ? CompanionStatuses.Unavailable : CompanionStatuses.Preparing);
+            }
 
-        var places = Companion.Build(station.Location.Y, station.Location.X, raw, chargeMinutes, localNow);
+            _refreshQueue.Request(stationId);
+            return new CompanionResultDto(chargeMinutes, maxPowerKw, backBy, [], [], Source,
+                                          Unavailable: false, CompanionStatuses.Preparing);
+        }
+
+        var places = Companion.Build(station.Location.Y, station.Location.X, cached.Places, chargeMinutes, localNow);
         return new CompanionResultDto(chargeMinutes, maxPowerKw, backBy, Companion.Picks(places, localNow), places,
-                                      Source, Unavailable: false);
+                                      Source, Unavailable: false, CompanionStatuses.Ready, cached.FetchedAt);
     }
 
     public async Task<WalkingRouteDto?> GetWalkingRouteAsync(Guid stationId, string placeId, CancellationToken ct)
@@ -47,9 +70,8 @@ public class CompanionService : ICompanionService
         var station = await _stations.GetByIdAsync(stationId, ct);
         if (station is null) return null;
 
-        // Same radius as the list, so this is served from the places cache
-        var (_, chargeMinutes) = ChargeOf(station);
-        var place = (await NearbyAsync(station, chargeMinutes, ct))?.FirstOrDefault(p => p.Id == placeId);
+        // The place must be one the companion listed, i.e. in the stored places
+        var place = (await _cache.GetAsync(stationId, ct))?.Places?.FirstOrDefault(p => p.Id == placeId);
         if (place is null) return null;
 
         var (fromLat, fromLng) = (station.Location.Y, station.Location.X);
@@ -68,12 +90,9 @@ public class CompanionService : ICompanionService
             Estimated: false);
     }
 
-    private static (int? MaxPowerKw, int? ChargeMinutes) ChargeOf(Station station)
+    internal static (int? MaxPowerKw, int? ChargeMinutes) ChargeOf(Station station)
     {
         int? maxPowerKw = station.Connectors.Count > 0 ? station.Connectors.Max(c => c.PowerKw) : null;
         return (maxPowerKw, ChargingTime.EstimateMinutes(maxPowerKw));
     }
-
-    private Task<List<RawPlace>?> NearbyAsync(Station station, int? chargeMinutes, CancellationToken ct) =>
-        _places.GetNearbyAsync(station.Location.Y, station.Location.X, Companion.SearchRadiusMeters(chargeMinutes), ct);
 }
